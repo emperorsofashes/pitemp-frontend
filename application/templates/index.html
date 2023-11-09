@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-danger">
+                {{ messages[0] }}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="row ml-3 mb-3">
+        {% include 'products_search.html' %}
+    </div>
+
+    <div class="row">
+        <div id="search-browse-column" class="col align-top">
+            <h1>Categories:</h1>
+            {% for category in categories %}
+            <p>
+                <a href="/category/{{ category.id }}">{{ category.display_name | safe }}</a>
+            </p>
+            {% endfor %}
+        </div>
+        {% if 'user_id' in session %}
+            <div id="favorites-column" class="col align-top">
+                <h1>Favorites:</h1>
+                {% for favorite in favorites %}
+                <p>
+                    <a href="/price_history/{{ favorite.id }}">{{ favorite.display_name | safe }}</a>
+                </p>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+{% endblock %}

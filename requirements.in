@@ -1,0 +1,9 @@
+Flask
+gunicorn
+pymongo
+dnspython
+flask_accept
+bcrypt
+redis
+fakeredis
+Flask-Compress

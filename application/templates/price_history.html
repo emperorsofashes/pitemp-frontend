@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+
+{% include 'products_search.html' %}
+
+<div class="m-3">
+  <div class="left-product-div">
+    {% if product_image_url != None %}
+        <img src="{{ product_image_url }}">
+    {% endif %}
+  </div>
+  <div class="right-product-div">
+      <h2>{{ product_display_name }}</h2>
+      {% if 'user_id' in session %}
+          {% if is_favorite %}
+            <img class="favorite-star" src="{{ url_for('static', filename='star.png') }}" title="Favorite Product">
+          {% else %}
+            <img class="favorite-star" src="{{ url_for('static', filename='star_unfilled.png') }}" title="Click to Favorite Product">
+          {% endif %}
+      {% endif %}
+  </div>
+</div>
+
+<div id="price-chart-div">
+    <canvas id="myChart"></canvas>
+</div>
+
+<script>
+    const ctx = document.getElementById('myChart');
+
+    const data = {
+        labels: {{ dates | safe }},
+        datasets: [
+          {
+            label: 'Price',
+            data: {{ prices }},
+            fill: false,
+            stepped: true,
+          }
+        ]
+      };
+
+    Chart.defaults.font.size = 18;
+    const decimals = 2;
+
+    const config = {
+        type: 'line',
+        data: data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            axis: 'x'
+          },
+          scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'yyyy-MM-dd',
+                        displayFormats: {
+                            day: 'yyyy-MM-dd'
+                        }
+                    }
+                },
+              y: {
+                ticks: {
+                  // Include a dollar sign in the ticks
+                  callback: function(value, index, values) {
+                      return '$' + value.toFixed(decimals);
+                }
+              }
+              },
+          },
+          plugins: {
+            annotation: {
+                annotations: [
+                {
+                    type: 'line',
+                    borderDash: [10, 10],
+                    yMin: {{ maximum_price }},
+                    yMax: {{ maximum_price }},
+                    borderColor: 'rgb(255, 0, 0, 0.75)',
+                    borderWidth: 1
+                },
+                {
+                    type: 'line',
+                    borderDash: [10, 10],
+                    yMin: {{ minimum_price }},
+                    yMax: {{ minimum_price }},
+                    borderColor: 'rgb(0, 255, 0, 0.75)',
+                    borderWidth: 1
+                }
+                ]
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+
+                        if (label) {
+                            label += ' $';
+                        }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y.toFixed(decimals);
+                        }
+                        return label;
+                    }
+                }
+            }
+          }
+        }
+      };
+
+    new Chart(ctx, config);
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script>
+    $(".favorite-star").on("click", function(event) {
+      var jqxhr = $.post( "/api/v1/toggle_favorite/{{ product_id }}", function(data) {
+            console.log("Favorited item: " + JSON.stringify(data));
+            if (data.hasOwnProperty("is_favorite")) {
+                var is_favorite = data.is_favorite;
+                if (is_favorite) {
+                    $(".favorite-star").attr("src", "{{ url_for('static', filename='star.png') }}");
+                } else {
+                    $(".favorite-star").attr("src", "{{ url_for('static', filename='star_unfilled.png') }}");
+                }
+            }
+        })
+        .fail(function(jqXHR, textStatus, errorThrown) {
+            console.error("Error favoriting item! " + jqXHR.status + " - "  + textStatus);
+        });
+    });
+</script>
+<p></p>
+<table>
+    <tr>
+        <td><h4>Current Price:</h4></td>
+        {% if current_price == minimum_price %}
+        <td><h4 class="text-success">${{ '{:,.2f}'.format(current_price) }}</h4></td>
+        {% elif current_price == maximum_price %}
+        <td><h4 class="text-danger">${{ '{:,.2f}'.format(current_price) }}</h4></td>
+        {% else %}
+        <td><h4>${{ '{:,.2f}'.format(current_price) }}</h4></td>
+        {% endif %}
+    </tr>
+    <tr>
+        <td><h4>Minimum Price:</h4></td>
+        {% if minimum_price_date is none %}
+        <td><h4>${{ '{:,.2f}'.format(minimum_price) }}</h4></td>
+        {% else %}
+        <td><h4>${{ '{:,.2f}'.format(minimum_price) }} (Last Seen: {{ minimum_price_date }})</h4></td>
+        {% endif %}
+    </tr>
+    <tr>
+        <td><h4>Maximum Price:</h4></td>
+        {% if maximum_price_date is none %}
+        <td><h4>${{ '{:,.2f}'.format(maximum_price) }}</h4></td>
+        {% else %}
+        <td><h4>${{ '{:,.2f}'.format(maximum_price) }} (Last Seen: {{ maximum_price_date }})</h4></td>
+        {% endif %}
+    </tr>
+</table>
+
+{% endblock %}

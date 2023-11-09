@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container space-block">
+        <div id="user-information">
+            <strong>User name:</strong> {{ session['user_name'] }}
+            <br>
+            <strong>User email:</strong> {{ session['user_email'] }}
+        </div>
+        <p></p>
+        <div id="logout-button">
+            <form action="/logout" method="get">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to logout?')">Logout</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

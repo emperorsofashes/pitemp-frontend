@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-danger">
+                {{ messages[0] }}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% include 'products_search.html' %}
+
+    <h2>{{ num_results }} Results For '{{ search_query }}':</h2>
+    {% for product in products %}
+    <p>
+        <a href="/price_history/{{ product.id }}">{{ product.display_name | safe }}</a>
+    </p>
+    {% endfor %}
+
+{% endblock %}
