@@ -45,17 +45,35 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          elements: {
+            line: {
+                backgroundColor: 'black',
+                borderColor: 'black',
+                borderWidth: 2
+            },
+            point: {
+                backgroundColor: 'black',
+                borderColor: 'black',
+                pointRadius: 1
+            }
+          },
           interaction: {
             intersect: false,
             axis: 'x'
           },
           scales: {
                 x: {
+                    title: {
+                        text: 'Timestamp',
+                        display: true,
+                        font: {
+                            size: 24
+                        }
+                    },
                     type: 'time',
                     time: {
                         unit: 'hour',
                         stepSize: 2,
-                        tooltipFormat: 'yyyy-MM-dd HH:mm',
                     },
                     ticks: {
                         major: {
@@ -67,8 +85,20 @@
                         }
                     },
                 },
+                y: {
+                    title: {
+                        text: 'Temperature (°F)',
+                        display: true,
+                        font: {
+                            size: 24
+                        }
+                    },
+                }
           },
           plugins: {
+            legend: {
+                display: false
+            },
             annotation: {
                 annotations: [
                 {
@@ -94,25 +124,6 @@
       };
 
     new Chart(ctx, config);
-</script>
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script>
-    $(".favorite-star").on("click", function(event) {
-      var jqxhr = $.post( "/api/v1/toggle_favorite/{{ product_id }}", function(data) {
-            console.log("Favorited item: " + JSON.stringify(data));
-            if (data.hasOwnProperty("is_favorite")) {
-                var is_favorite = data.is_favorite;
-                if (is_favorite) {
-                    $(".favorite-star").attr("src", "{{ url_for('static', filename='star.png') }}");
-                } else {
-                    $(".favorite-star").attr("src", "{{ url_for('static', filename='star_unfilled.png') }}");
-                }
-            }
-        })
-        .fail(function(jqXHR, textStatus, errorThrown) {
-            console.error("Error favoriting item! " + jqXHR.status + " - "  + textStatus);
-        });
-    });
 </script>
 
 {% endblock %}

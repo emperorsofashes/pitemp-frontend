@@ -65,7 +65,7 @@ class ApplicationDao:
         maximum_temp_date = None
 
         for document in documents:
-            timestamp = document["timestamp"]
+            timestamp = document["timestamp"].replace(tzinfo=datetime.timezone.utc).astimezone(tz=None)
             dates.append(timestamp)
             temp = document["temp_f"]
             temperature = temp
