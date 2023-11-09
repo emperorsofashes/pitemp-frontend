@@ -47,9 +47,6 @@ def create_flask_app() -> Flask:
     dao = ApplicationDao(metrics=metrics, cache=cache)
     app.config[DATABASE_CONFIG_KEY] = dao
 
-    users = Users(dao=dao)
-    app.config[USERS_CONFIG_KEY] = users
-
     # This must be set in the environment as a secret
     app.secret_key = os.environ["SECRET_KEY"]
 

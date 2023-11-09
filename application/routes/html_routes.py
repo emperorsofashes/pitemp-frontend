@@ -24,15 +24,18 @@ PRODUCT_IMAGE_URL_PREFIX = os.environ.get("PRODUCT_IMAGE_URL_PREFIX")
 def homepage():
     dao = _get_dao()
 
-    categories = dao.get_categories()
+    temp_history = dao.get_temperature_history(days_back=7)
 
-    if SESSION_USER_ID_KEY in session:
-        user_id = session[SESSION_USER_ID_KEY]
-        favorites = _get_users().get_favorites(user_id=user_id)
-    else:
-        favorites = []
-
-    return render_template("index.html", categories=categories, favorites=favorites)
+    return render_template(
+        "index.html",
+        dates=temp_history.dates,
+        temperatures=temp_history.temperatures,
+        current_temp=temp_history.current_temp,
+        minimum_temp=temp_history.minimum_temp,
+        maximum_temp=temp_history.maximum_temp,
+        minimum_temp_date=temp_history.minimum_temp_date,
+        maximum_temp_date=temp_history.maximum_temp_date,
+    )
 
 
 @HTML_BLUEPRINT.route("/profile")
