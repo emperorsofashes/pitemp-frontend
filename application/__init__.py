@@ -5,7 +5,7 @@ import redis
 from flask import Flask
 from flask_compress import Compress
 
-from application.constants.app_constants import DATABASE_CONFIG_KEY, METRICS_CONFIG_KEY, USERS_CONFIG_KEY
+from application.constants.app_constants import DATABASE_CONFIG_KEY
 from application.data.custom_json_encoder import CustomJsonEncoder
 from application.data.dao import ApplicationDao
 from application.routes.html_routes import HTML_BLUEPRINT

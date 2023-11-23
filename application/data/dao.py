@@ -5,6 +5,7 @@ import time
 from typing import List
 
 import fakeredis
+import pytz
 import redis
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -62,7 +63,9 @@ class ApplicationDao:
         maximum_temp_date = None
 
         for document in documents:
-            timestamp = document["timestamp"].replace(tzinfo=datetime.timezone.utc).astimezone(tz=None)
+            timestamp = (
+                document["timestamp"].replace(tzinfo=datetime.timezone.utc).astimezone(tz=pytz.timezone("US/Central"))
+            )
             dates.append(timestamp)
             temp = document["temp_f"]
             temperature = temp

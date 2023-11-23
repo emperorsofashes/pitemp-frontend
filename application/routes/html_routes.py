@@ -1,14 +1,10 @@
 import logging
 import os
 
-from flask import Blueprint, current_app, render_template, session, redirect
+from flask import Blueprint, current_app, render_template
 
 from application.constants.app_constants import (
-    USERS_CONFIG_KEY,
     DATABASE_CONFIG_KEY,
-    SESSION_USER_EMAIL_KEY,
-    SESSION_USER_NAME_KEY,
-    SESSION_USER_ID_KEY,
 )
 from application.data.dao import ApplicationDao
 
