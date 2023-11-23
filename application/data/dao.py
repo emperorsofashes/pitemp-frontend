@@ -14,7 +14,6 @@ from application.constants.app_constants import (
     DATE_FORMAT_STRING,
     REDIS_VERSION,
 )
-from application.data.metrics import Metrics
 from application.data.temperature_history import TemperatureHistory
 
 DATABASE_NAME = "sensors"
@@ -23,9 +22,7 @@ LOG = logging.getLogger(__name__)
 
 
 class ApplicationDao:
-    def __init__(self, database: Database = None, metrics: Metrics = None, cache: redis.Redis = None):
-        self.metrics = metrics
-
+    def __init__(self, database: Database = None, cache: redis.Redis = None):
         # If no cache is given, spin up a fake one
         if cache is None:
             self.cache = fakeredis.FakeStrictRedis(version=REDIS_VERSION)
