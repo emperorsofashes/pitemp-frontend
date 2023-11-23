@@ -37,6 +37,7 @@
       };
 
     Chart.defaults.font.size = 18;
+    Chart.defaults.color = 'white';
     const decimals = 2;
 
     const config = {
@@ -47,13 +48,13 @@
           maintainAspectRatio: false,
           elements: {
             line: {
-                backgroundColor: 'black',
-                borderColor: 'black',
+                backgroundColor: 'white',
+                borderColor: 'white',
                 borderWidth: 2
             },
             point: {
-                backgroundColor: 'black',
-                borderColor: 'black',
+                backgroundColor: 'white',
+                borderColor: 'white',
                 pointRadius: 1
             }
           },
@@ -64,7 +65,7 @@
           scales: {
                 x: {
                     title: {
-                        text: 'Timestamp',
+                        text: 'Time',
                         display: true,
                         font: {
                             size: 24
@@ -74,6 +75,10 @@
                     time: {
                         unit: 'hour',
                         stepSize: 2,
+                    },
+                    grid: {
+                        display: true,
+                        color: 'rgb(255,255,255, 0.5)'
                     },
                     ticks: {
                         major: {
@@ -93,6 +98,10 @@
                             size: 24
                         }
                     },
+                    grid: {
+                        display: true,
+                        color: 'rgb(255,255,255, 0.5)'
+                    },
                 }
           },
           plugins: {
@@ -106,16 +115,16 @@
                     borderDash: [10, 10],
                     yMin: {{ maximum_temp }},
                     yMax: {{ maximum_temp }},
-                    borderColor: 'rgb(255, 0, 0, 0.75)',
-                    borderWidth: 1
+                    borderColor: 'rgb(255, 0, 0)',
+                    borderWidth: 2
                 },
                 {
                     type: 'line',
                     borderDash: [10, 10],
                     yMin: {{ minimum_temp }},
                     yMax: {{ minimum_temp }},
-                    borderColor: 'rgb(0, 0, 255, 0.75)',
-                    borderWidth: 1
+                    borderColor: 'rgb(20, 195, 204)',
+                    borderWidth: 2
                 }
                 ]
             }
