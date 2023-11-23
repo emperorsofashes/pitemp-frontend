@@ -13,9 +13,14 @@
 {% endif %}
 {% endwith %}
 
+<div class="m-3">
+    <h5>Maximum Temperature: <span class="text-danger">{{ maximum_temp }} °F</span></h5>
+    <h5>Minimum Temperature: <span class="text-info">{{ minimum_temp }} °F</span></h5>
+</div>
+
 
 <div class="m-3">
-  <h3>Temperature</h3>
+  <h3>Temperature History</h3>
 </div>
 
 <div id="temperature-chart-div">
