@@ -1,5 +1,5 @@
-# Price History
-A simple Flask application to display price history.
+# Pitemp Frontend
+A simple Flask application to display temperature history.
 
 ## Prerequisites
 You will need a [MongoDB](https://www.mongodb.com/) database to run this application.
