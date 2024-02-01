@@ -48,6 +48,8 @@ class ApplicationDao:
         LOG.info(f"Database collections: {self.database.list_collection_names()}")
 
     def get_temperature_history(self, days_back: int) -> TemperatureHistory:
+        # TODO implement min-max decimation to help with performance
+
         start = time.perf_counter_ns()
 
         dates: List[datetime] = []
@@ -56,6 +58,8 @@ class ApplicationDao:
         documents = self.pitemp_collection.find(
             filter={"timestamp": {"$gte": datetime.datetime.now() - datetime.timedelta(days=days_back)}}
         )
+        # We need the dates in order for them to render correctly
+        documents.sort({"timestamp": 1})
 
         minimum_temp = None
         maximum_temp = None

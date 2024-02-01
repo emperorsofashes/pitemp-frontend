@@ -33,5 +33,23 @@ def homepage():
     )
 
 
+@HTML_BLUEPRINT.route("/<int:days_back>")
+def days_page(days_back: int):
+    dao = _get_dao()
+
+    temp_history = dao.get_temperature_history(days_back=days_back)
+
+    return render_template(
+        "index.html",
+        dates=temp_history.dates,
+        temperatures=temp_history.temperatures,
+        current_temp=temp_history.current_temp,
+        minimum_temp=temp_history.minimum_temp,
+        maximum_temp=temp_history.maximum_temp,
+        minimum_temp_date=temp_history.minimum_temp_date,
+        maximum_temp_date=temp_history.maximum_temp_date,
+    )
+
+
 def _get_dao() -> ApplicationDao:
     return current_app.config[DATABASE_CONFIG_KEY]
