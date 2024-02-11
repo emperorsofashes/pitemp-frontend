@@ -17,7 +17,9 @@ from pymongo.database import Database
 from application import CustomJsonEncoder
 from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
-    REDIS_VERSION, DATE_FORMAT_STRING, ONE_DAY_IN_SECONDS,
+    REDIS_VERSION,
+    DATE_FORMAT_STRING,
+    ONE_DAY_IN_SECONDS,
 )
 from application.data.temperature_history import TemperatureHistory
 from application.data.temperatures import Temperatures
@@ -63,7 +65,9 @@ class ApplicationDao:
         return temp_history
 
     @staticmethod
-    def _get_data_to_add(min_temp: float, min_date: datetime.datetime, max_temp: float, max_date: datetime.datetime) -> (List[datetime.datetime], List[float]):
+    def _get_data_to_add(
+        min_temp: float, min_date: datetime.datetime, max_temp: float, max_date: datetime.datetime
+    ) -> (List[datetime.datetime], List[float]):
         if min_temp == max_temp:
             return [min_date], [min_temp]
         elif min_date <= max_date:
@@ -77,9 +81,7 @@ class ApplicationDao:
         max_date = datetime.datetime.combine(date, datetime.time.max)
         LOG.info(f"Calculating decimated values for date {min_date}")
 
-        documents = self.pitemp_collection.find(
-            filter={"timestamp": {"$gte": min_date, "$lte": max_date}}
-        )
+        documents = self.pitemp_collection.find(filter={"timestamp": {"$gte": min_date, "$lte": max_date}})
         # We need the dates in order for the algorithm to work
         documents.sort({"timestamp": 1})
 
@@ -108,7 +110,12 @@ class ApplicationDao:
                     LOG.info(f"Missing data for date {date}. Skipping.")
                     return None
 
-                dates_to_add, temps_to_add = self._get_data_to_add(min_temp=period_min_temp, min_date=period_min_datetime, max_temp=period_max_temp, max_date=period_max_datetime)
+                dates_to_add, temps_to_add = self._get_data_to_add(
+                    min_temp=period_min_temp,
+                    min_date=period_min_datetime,
+                    max_temp=period_max_temp,
+                    max_date=period_max_datetime,
+                )
                 dates.extend([x.strftime(DATETIME_FORMAT_STRING) for x in dates_to_add])
                 temperatures.extend(temps_to_add)
 
@@ -129,7 +136,9 @@ class ApplicationDao:
 
         return Temperatures(dates=dates, temperatures=temperatures)
 
-    def _get_temperatures(self, date: datetime.datetime, now_datetime: datetime.datetime, periods_per_day: int) -> Optional[Temperatures]:
+    def _get_temperatures(
+        self, date: datetime.datetime, now_datetime: datetime.datetime, periods_per_day: int
+    ) -> Optional[Temperatures]:
         hours_diff = abs((date - now_datetime).total_seconds() // 60)
 
         if hours_diff > 23:

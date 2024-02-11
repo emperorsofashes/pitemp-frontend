@@ -12,5 +12,5 @@ def main():
     waitress.serve(create_flask_app(), listen=f"{host}:{port}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
