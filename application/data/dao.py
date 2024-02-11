@@ -2,12 +2,13 @@ import datetime
 import json
 import logging
 import os
-import pickle
 import time
-from typing import List
+from asyncio import Future
+from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
+from typing import List, Optional
 
 import fakeredis
-import pytz
 import redis
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -18,7 +19,6 @@ from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
     REDIS_VERSION, DATE_FORMAT_STRING, ONE_DAY_IN_SECONDS,
 )
-from application.data.custom_json_decoder import decode_json
 from application.data.temperature_history import TemperatureHistory
 from application.data.temperatures import Temperatures
 
@@ -71,7 +71,7 @@ class ApplicationDao:
         else:
             return [max_date, min_date], [max_temp, min_temp]
 
-    def _calculate_day_temperatures(self, date: datetime.datetime, periods_per_day: int) -> Temperatures:
+    def _calculate_day_temperatures(self, date: datetime.datetime, periods_per_day: int) -> Optional[Temperatures]:
         # The first instant and last instant of the calendar date
         min_date = datetime.datetime.combine(date, datetime.time.min)
         max_date = datetime.datetime.combine(date, datetime.time.max)
@@ -97,9 +97,17 @@ class ApplicationDao:
             timestamp = document["timestamp"]
             temperature = document["temp_f"]
 
+            if timestamp is None or temperature is None:
+                LOG.warning(f"Invalid document {document}. Skipping.")
+                continue
+
             # If we are past the boundary of the period, it's time to start a new period by adding the min and max
             # values then resetting them to give this new period a clean start.
             if timestamp > next_boundary:
+                if period_min_temp is None or period_max_temp is None:
+                    LOG.info(f"Missing data for date {date}. Skipping.")
+                    return None
+
                 dates_to_add, temps_to_add = self._get_data_to_add(min_temp=period_min_temp, min_date=period_min_datetime, max_temp=period_max_temp, max_date=period_max_datetime)
                 dates.extend([x.strftime(DATETIME_FORMAT_STRING) for x in dates_to_add])
                 temperatures.extend(temps_to_add)
@@ -121,6 +129,28 @@ class ApplicationDao:
 
         return Temperatures(dates=dates, temperatures=temperatures)
 
+    def _get_temperatures(self, date: datetime.datetime, now_datetime: datetime.datetime, periods_per_day: int) -> Optional[Temperatures]:
+        hours_diff = abs((date - now_datetime).total_seconds() // 60)
+
+        if hours_diff > 23:
+            # Check the cache first to save computation cost
+            day_cache_key = self._get_day_cache_key(date, periods_per_day)
+            cached_day_value = self.cache.get(day_cache_key)
+
+            if cached_day_value:
+                LOG.info(f"Getting day value from cache: {cached_day_value}")
+                day_temperatures = Temperatures(**json.loads(cached_day_value.decode()))
+            else:
+                # If the day is not already cached, do so since the data should be immutable
+                day_temperatures = self._calculate_day_temperatures(date, periods_per_day)
+                if day_temperatures:
+                    self.cache.set(day_cache_key, json.dumps(day_temperatures, cls=CustomJsonEncoder))
+        else:
+            # We don't want to set the cache for the current day because it is not complete yet
+            day_temperatures = self._calculate_day_temperatures(date, periods_per_day)
+
+        return day_temperatures
+
     def _get_decimated_data(self, days_back: int) -> TemperatureHistory:
         now_datetime = datetime.datetime.now()
 
@@ -128,30 +158,19 @@ class ApplicationDao:
         temperatures: List[float] = []
 
         current_date = datetime.datetime.now() - datetime.timedelta(days=days_back)
+        futures: List[Future] = [None] * (days_back + 1)
         periods_per_day = self._get_periods_per_day(days_back)
-        for i in range(days_back + 1):
-            hours_diff = abs((current_date - now_datetime).total_seconds() // 60)
 
-            if hours_diff > 23:
-                # Check the cache first to save computation cost
-                day_cache_key = self._get_day_cache_key(current_date, periods_per_day)
-                cached_day_value = self.cache.get(day_cache_key)
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            for i in range(days_back + 1):
+                futures[i] = executor.submit(self._get_temperatures, current_date, now_datetime, periods_per_day)
+                current_date = current_date + datetime.timedelta(days=1)
 
-                if cached_day_value:
-                    LOG.info(f"Getting day value from cache: {cached_day_value}")
-                    day_temperatures = Temperatures(**json.loads(cached_day_value.decode()))
-                else:
-                    # If the day is not already cached, do so since the data should be immutable
-                    day_temperatures = self._calculate_day_temperatures(current_date, periods_per_day)
-                    self.cache.set(day_cache_key, json.dumps(day_temperatures, cls=CustomJsonEncoder))
-            else:
-                # We don't want to set the cache for the current day because it is not complete yet
-                day_temperatures = self._calculate_day_temperatures(current_date, periods_per_day)
-
-            dates.extend(day_temperatures.dates)
-            temperatures.extend(day_temperatures.temperatures)
-
-            current_date = current_date + datetime.timedelta(days=1)
+            for i in range(len(futures)):
+                result = futures[i].result()
+                if result:
+                    dates.extend(result.dates)
+                    temperatures.extend(result.temperatures)
 
         return TemperatureHistory(
             dates=dates,
