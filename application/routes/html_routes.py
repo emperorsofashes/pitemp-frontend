@@ -28,8 +28,6 @@ def homepage():
         current_temp=temp_history.current_temp,
         minimum_temp=temp_history.minimum_temp,
         maximum_temp=temp_history.maximum_temp,
-        minimum_temp_date=temp_history.minimum_temp_date,
-        maximum_temp_date=temp_history.maximum_temp_date,
     )
 
 
@@ -46,8 +44,6 @@ def days_page(days_back: int):
         current_temp=temp_history.current_temp,
         minimum_temp=temp_history.minimum_temp,
         maximum_temp=temp_history.maximum_temp,
-        minimum_temp_date=temp_history.minimum_temp_date,
-        maximum_temp_date=temp_history.maximum_temp_date,
     )
 
 

@@ -1,7 +1,10 @@
 import dataclasses
+from datetime import datetime, date
 from json import JSONEncoder
 
 from bson import ObjectId
+
+from application.constants.app_constants import DATETIME_FORMAT_STRING
 
 
 class CustomJsonEncoder(JSONEncoder):
@@ -10,4 +13,6 @@ class CustomJsonEncoder(JSONEncoder):
             return str(obj)
         elif dataclasses.is_dataclass(obj):
             return dataclasses.asdict(obj)
+        elif isinstance(obj, (datetime, date)):
+            return obj.strftime(DATETIME_FORMAT_STRING)
         return JSONEncoder.default(self, obj)

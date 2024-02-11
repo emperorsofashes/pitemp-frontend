@@ -4,6 +4,7 @@ import os
 import redis
 from flask import Flask
 from flask_compress import Compress
+from redis import Redis
 
 from application.constants.app_constants import DATABASE_CONFIG_KEY
 from application.data.custom_json_encoder import CustomJsonEncoder
@@ -31,7 +32,7 @@ def create_flask_app() -> Flask:
 
     redis_url = os.environ.get("REDIS_DATA_URL")
     if redis_url:
-        cache = redis.Redis.from_url(redis_url)
+        cache: Redis = redis.Redis.from_url(redis_url)
         cache.ping()
         LOG.info("Using Redis cache for data")
     else:

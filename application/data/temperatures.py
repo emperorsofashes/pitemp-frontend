@@ -3,9 +3,6 @@ from typing import List
 
 
 @dataclass
-class TemperatureHistory:
+class Temperatures:
     dates: List[str]
     temperatures: List[float]
-    current_temp: float
-    minimum_temp: float
-    maximum_temp: float
