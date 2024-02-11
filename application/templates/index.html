@@ -13,18 +13,18 @@
 {% endif %}
 {% endwith %}
 
-<div class="m-3">
+<div class="m-3 mx-auto temp-header">
     <h5>Current Temperature: {{ current_temp|round(1) }} °F</h5>
     <h5>Maximum Temperature: <span class="text-danger">{{ maximum_temp|round(1) }} °F</span></h5>
     <h5>Minimum Temperature: <span class="text-info">{{ minimum_temp|round(1) }} °F</span></h5>
 </div>
 
 
-<div class="m-3">
+<div class="m-3 mx-auto temp-header">
   <h3>Temperature History</h3>
 </div>
 
-<div id="temperature-chart-div">
+<div id="temperature-chart-div" class="mx-auto">
     <canvas id="myChart"></canvas>
 </div>
 
