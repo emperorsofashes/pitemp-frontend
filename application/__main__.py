@@ -1,10 +1,15 @@
+import os
+
 import waitress
 
 from application import create_flask_app
 
 
 def main():
-    waitress.serve(create_flask_app(), listen='127.0.0.1:5003')
+    host = os.environ.get("WAITRESS_HOST", "127.0.0.1")
+    port = os.environ.get("PORT", 10000)
+
+    waitress.serve(create_flask_app(), listen=f"{host}:{port}")
 
 
 if __name__ == '__main__':
