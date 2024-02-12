@@ -5,7 +5,6 @@ import os
 import time
 from asyncio import Future
 from concurrent.futures import ThreadPoolExecutor
-from threading import Thread
 from typing import List, Optional
 
 import fakeredis
