@@ -32,12 +32,13 @@
     const ctx = document.getElementById('myChart');
 
     const data = {
-        labels: {{ dates | safe }},
         datasets: [
           {
-            label: 'Temperature (°F)',
-            data: {{ temperatures }},
+            label: "{{ piDataSet.label }}",
+            data: {{ piDataSet.data | safe }},
             fill: false,
+            backgroundColor: 'white',
+            borderColor: 'white',
           }
         ]
       };
@@ -54,13 +55,9 @@
           maintainAspectRatio: false,
           elements: {
             line: {
-                backgroundColor: 'white',
-                borderColor: 'white',
                 borderWidth: 2
             },
             point: {
-                backgroundColor: 'white',
-                borderColor: 'white',
                 pointRadius: 1
             }
           },

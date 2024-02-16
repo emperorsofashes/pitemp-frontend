@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict
 
 
 @dataclass
-class TemperatureHistory:
-    dates: List[str]
-    temperatures: List[float]
+class TemperatureDataSet:
+    label: str
+    data: List[Dict]
     current_temp: float
     minimum_temp: float
     maximum_temp: float

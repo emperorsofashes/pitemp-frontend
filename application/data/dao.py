@@ -20,7 +20,7 @@ from application.constants.app_constants import (
     DATE_FORMAT_STRING,
     ONE_DAY_IN_SECONDS,
 )
-from application.data.temperature_history import TemperatureHistory
+from application.data.temperature_data_set import TemperatureDataSet
 from application.data.temperatures import Temperatures
 
 DATABASE_NAME = "sensors"
@@ -53,10 +53,10 @@ class ApplicationDao:
 
         LOG.info(f"Database collections: {self.database.list_collection_names()}")
 
-    def get_temperature_history(self, days_back: int) -> TemperatureHistory:
+    def get_temperature_history(self, sensor_id: str, days_back: int) -> TemperatureDataSet:
         start = time.perf_counter_ns()
 
-        temp_history = self._get_decimated_data(days_back)
+        temp_history = self._get_decimated_data(sensor_id, days_back)
 
         duration_ms = (time.perf_counter_ns() - start) // 1000000
         print(f"Temperature history for {days_back} days back took {duration_ms} ms")
@@ -74,13 +74,17 @@ class ApplicationDao:
         else:
             return [max_date, min_date], [max_temp, min_temp]
 
-    def _calculate_day_temperatures(self, date: datetime.datetime, periods_per_day: int) -> Optional[Temperatures]:
+    def _calculate_day_temperatures(
+        self, sensor_id: str, date: datetime.datetime, periods_per_day: int
+    ) -> Optional[Temperatures]:
         # The first instant and last instant of the calendar date
         min_date = datetime.datetime.combine(date, datetime.time.min)
         max_date = datetime.datetime.combine(date, datetime.time.max)
         LOG.info(f"Calculating decimated values for date {min_date}")
 
-        documents = self.pitemp_collection.find(filter={"timestamp": {"$gte": min_date, "$lte": max_date}, "sensorId": "pi"})
+        documents = self.pitemp_collection.find(
+            filter={"timestamp": {"$gte": min_date, "$lte": max_date}, "sensorId": sensor_id}
+        )
         # We need the dates in order for the algorithm to work
         documents.sort({"timestamp": 1})
 
@@ -136,42 +140,44 @@ class ApplicationDao:
         return Temperatures(dates=dates, temperatures=temperatures)
 
     def _get_temperatures(
-        self, date: datetime.datetime, now_datetime: datetime.datetime, periods_per_day: int
+        self, sensor_id: str, date: datetime.datetime, now_datetime: datetime.datetime, periods_per_day: int
     ) -> Optional[Temperatures]:
         hours_diff = abs((date - now_datetime).total_seconds() // 60 // 60)
 
-        if hours_diff > 24:
+        if hours_diff >= 24:
             # Check the cache first to save computation cost
             day_cache_key = self._get_day_cache_key(date, periods_per_day)
-            cached_day_value = self.cache.get(day_cache_key)
+            cached_day_value: bytes = self.cache.get(day_cache_key)
 
             if cached_day_value:
-                LOG.info(f"Getting day value from cache: {cached_day_value}")
+                LOG.info(f"Getting day value from cache for key {day_cache_key}: {cached_day_value}")
                 day_temperatures = Temperatures(**json.loads(cached_day_value.decode()))
             else:
                 # If the day is not already cached, do so since the data should be immutable
-                day_temperatures = self._calculate_day_temperatures(date, periods_per_day)
+                day_temperatures = self._calculate_day_temperatures(sensor_id, date, periods_per_day)
                 if day_temperatures:
                     self.cache.set(day_cache_key, json.dumps(day_temperatures, cls=CustomJsonEncoder))
         else:
             # We don't want to set the cache for the current day because it is not complete yet
-            day_temperatures = self._calculate_day_temperatures(date, periods_per_day)
+            day_temperatures = self._calculate_day_temperatures(sensor_id, date, periods_per_day)
 
         return day_temperatures
 
-    def _get_decimated_data(self, days_back: int) -> TemperatureHistory:
+    def _get_decimated_data(self, sensor_id: str, days_back: int) -> TemperatureDataSet:
         now_datetime = datetime.datetime.now()
 
         dates: List[str] = []
         temperatures: List[float] = []
 
         current_date = datetime.datetime.now() - datetime.timedelta(days=days_back)
-        futures: List[Future] = [None] * (days_back + 1)
+        futures: List[Optional[Future]] = [None] * (days_back + 1)
         periods_per_day = self._get_periods_per_day(days_back)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             for i in range(days_back + 1):
-                futures[i] = executor.submit(self._get_temperatures, current_date, now_datetime, periods_per_day)
+                futures[i] = executor.submit(
+                    self._get_temperatures, sensor_id, current_date, now_datetime, periods_per_day
+                )
                 current_date = current_date + datetime.timedelta(days=1)
 
             for i in range(len(futures)):
@@ -180,9 +186,13 @@ class ApplicationDao:
                     dates.extend(result.dates)
                     temperatures.extend(result.temperatures)
 
-        return TemperatureHistory(
-            dates=dates,
-            temperatures=temperatures,
+        data = []
+        for i in range(len(dates)):
+            data.append({"x": dates[i], "y": temperatures[i]})
+
+        return TemperatureDataSet(
+            label=f"{sensor_id} - Temperature (°F)",
+            data=data,
             current_temp=temperatures[-1],
             minimum_temp=min(temperatures),
             maximum_temp=max(temperatures),

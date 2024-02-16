@@ -19,15 +19,14 @@ PRODUCT_IMAGE_URL_PREFIX = os.environ.get("PRODUCT_IMAGE_URL_PREFIX")
 def homepage():
     dao = _get_dao()
 
-    temp_history = dao.get_temperature_history(days_back=7)
+    pi_data_set = dao.get_temperature_history(sensor_id="pi", days_back=7)
 
     return render_template(
         "index.html",
-        dates=temp_history.dates,
-        temperatures=temp_history.temperatures,
-        current_temp=temp_history.current_temp,
-        minimum_temp=temp_history.minimum_temp,
-        maximum_temp=temp_history.maximum_temp,
+        piDataSet=pi_data_set,
+        current_temp=pi_data_set.current_temp,
+        minimum_temp=pi_data_set.minimum_temp,
+        maximum_temp=pi_data_set.maximum_temp,
     )
 
 
@@ -35,15 +34,14 @@ def homepage():
 def days_page(days_back: int):
     dao = _get_dao()
 
-    temp_history = dao.get_temperature_history(days_back=days_back)
+    pi_data_set = dao.get_temperature_history(sensor_id="pi", days_back=days_back)
 
     return render_template(
         "index.html",
-        dates=temp_history.dates,
-        temperatures=temp_history.temperatures,
-        current_temp=temp_history.current_temp,
-        minimum_temp=temp_history.minimum_temp,
-        maximum_temp=temp_history.maximum_temp,
+        piDataSet=pi_data_set,
+        current_temp=pi_data_set.current_temp,
+        minimum_temp=pi_data_set.minimum_temp,
+        maximum_temp=pi_data_set.maximum_temp,
     )
 
 
