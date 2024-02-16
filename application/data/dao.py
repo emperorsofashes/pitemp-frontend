@@ -80,7 +80,7 @@ class ApplicationDao:
         max_date = datetime.datetime.combine(date, datetime.time.max)
         LOG.info(f"Calculating decimated values for date {min_date}")
 
-        documents = self.pitemp_collection.find(filter={"timestamp": {"$gte": min_date, "$lte": max_date}})
+        documents = self.pitemp_collection.find(filter={"timestamp": {"$gte": min_date, "$lte": max_date}, "sensorId": "pi"})
         # We need the dates in order for the algorithm to work
         documents.sort({"timestamp": 1})
 
@@ -138,9 +138,9 @@ class ApplicationDao:
     def _get_temperatures(
         self, date: datetime.datetime, now_datetime: datetime.datetime, periods_per_day: int
     ) -> Optional[Temperatures]:
-        hours_diff = abs((date - now_datetime).total_seconds() // 60)
+        hours_diff = abs((date - now_datetime).total_seconds() // 60 // 60)
 
-        if hours_diff > 23:
+        if hours_diff > 24:
             # Check the cache first to save computation cost
             day_cache_key = self._get_day_cache_key(date, periods_per_day)
             cached_day_value = self.cache.get(day_cache_key)
