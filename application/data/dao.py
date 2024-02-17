@@ -146,7 +146,7 @@ class ApplicationDao:
 
         if hours_diff >= 24:
             # Check the cache first to save computation cost
-            day_cache_key = self._get_day_cache_key(date, periods_per_day)
+            day_cache_key = self._get_day_cache_key(sensor_id, date, periods_per_day)
             cached_day_value: bytes = self.cache.get(day_cache_key)
 
             if cached_day_value:
@@ -199,8 +199,8 @@ class ApplicationDao:
         )
 
     @staticmethod
-    def _get_day_cache_key(date: datetime.datetime, periods_per_day: int) -> str:
-        return f"{date.strftime(DATE_FORMAT_STRING)}_{periods_per_day}"
+    def _get_day_cache_key(sensor_id: str, date: datetime.datetime, periods_per_day: int) -> str:
+        return f"{sensor_id}_{date.strftime(DATE_FORMAT_STRING)}_{periods_per_day}"
 
     @staticmethod
     def _get_periods_per_day(num_days: int) -> int:

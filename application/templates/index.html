@@ -39,6 +39,13 @@
             fill: false,
             backgroundColor: 'white',
             borderColor: 'white',
+          },
+          {
+            label: "{{ nswDataSet.label }}",
+            data: {{ nswDataSet.data | safe }},
+            fill: false,
+            backgroundColor: '#EC95E7',
+            borderColor: '#EC95E7',
           }
         ]
       };
@@ -62,8 +69,9 @@
             }
           },
           interaction: {
+            mode: 'nearest',
             intersect: false,
-            axis: 'x'
+            axis: 'xy'
           },
           scales: {
                 x: {
@@ -109,7 +117,7 @@
           },
           plugins: {
             legend: {
-                display: false
+                display: true
             },
             annotation: {
                 annotations: [
