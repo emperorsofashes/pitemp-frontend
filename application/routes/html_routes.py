@@ -26,7 +26,6 @@ def homepage():
         "index.html",
         piDataSet=pi_data_set,
         nswDataSet=nsw_data_set,
-        current_temp=pi_data_set.current_temp,
         minimum_temp=pi_data_set.minimum_temp,
         maximum_temp=pi_data_set.maximum_temp,
     )
@@ -43,7 +42,6 @@ def days_page(days_back: int):
         "index.html",
         piDataSet=pi_data_set,
         nswDataSet=nsw_data_set,
-        current_temp=pi_data_set.current_temp,
         minimum_temp=pi_data_set.minimum_temp,
         maximum_temp=pi_data_set.maximum_temp,
     )
