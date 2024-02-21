@@ -28,8 +28,6 @@ To run this application, you need to set some environment variables:
 * `MONGO_PASSWORD` - The password for the MongoDB connection
 * `MONGO_HOST` - The host to connect to for the MongoDB connection
 * `SECRET_KEY` - Key used to sign session cookies
-* `USERS_USER` - The username for the MongoDB users database connection
-* `USERS_PASSWORD` - The password for the MongoDB users database connection
 * `REDIS_DATA_URL` - The URL for the cache connection
 
 ### Local
