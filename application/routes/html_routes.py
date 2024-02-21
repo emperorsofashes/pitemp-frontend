@@ -1,5 +1,4 @@
 import logging
-import os
 
 from flask import Blueprint, current_app, render_template
 
@@ -9,18 +8,16 @@ from application.constants.app_constants import (
 from application.data.dao import ApplicationDao
 
 LOG = logging.getLogger(__name__)
-
 HTML_BLUEPRINT = Blueprint("routes_html", __name__)
-
-PRODUCT_IMAGE_URL_PREFIX = os.environ.get("PRODUCT_IMAGE_URL_PREFIX")
+DEFAULT_DAYS_BACK = 7
 
 
 @HTML_BLUEPRINT.route("/")
 def homepage():
     dao = _get_dao()
 
-    pi_data_set = dao.get_temperature_history(sensor_id="pi", days_back=7)
-    nsw_data_set = dao.get_temperature_history(sensor_id="KATT", days_back=7)
+    pi_data_set = dao.get_temperature_history(sensor_id="pi", days_back=DEFAULT_DAYS_BACK)
+    nsw_data_set = dao.get_temperature_history(sensor_id="KATT", days_back=DEFAULT_DAYS_BACK)
 
     return render_template(
         "index.html",
