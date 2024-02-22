@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
 import fakeredis
+import pytz
 import redis
 from pymongo import MongoClient
 from pymongo.collection import Collection
@@ -53,10 +54,20 @@ class ApplicationDao:
 
         LOG.info(f"Database collections: {self.database.list_collection_names()}")
 
+    @staticmethod
+    def _fix_timestamps(temperature_data_set: TemperatureDataSet):
+        for entry in temperature_data_set.data:
+            timestamp = entry["x"]
+            date_time = datetime.datetime.strptime(timestamp, DATETIME_FORMAT_STRING)
+            date_time = date_time.replace(tzinfo=pytz.UTC)
+            local_datetime = date_time.astimezone(pytz.timezone("America/Chicago"))
+            entry["x"] = datetime.datetime.strftime(local_datetime, DATETIME_FORMAT_STRING)
+
     def get_temperature_history(self, sensor_id: str, days_back: int) -> TemperatureDataSet:
         start = time.perf_counter_ns()
 
         temp_history = self._get_decimated_data(sensor_id, days_back)
+        self._fix_timestamps(temp_history)
 
         duration_ms = (time.perf_counter_ns() - start) // 1000000
         print(f"Temperature history for {days_back} days back took {duration_ms} ms")
