@@ -80,7 +80,7 @@ class ApplicationDao:
         # The first instant and last instant of the calendar date
         min_date = datetime.datetime.combine(date, datetime.time.min)
         max_date = datetime.datetime.combine(date, datetime.time.max)
-        LOG.info(f"Calculating decimated values for date {min_date}")
+        LOG.info(f"Calculating decimated values for date {min_date} from sensor {sensor_id}")
 
         documents = self.pitemp_collection.find(
             filter={"timestamp": {"$gte": min_date, "$lte": max_date}, "sensorId": sensor_id}
@@ -109,9 +109,14 @@ class ApplicationDao:
             # If we are past the boundary of the period, it's time to start a new period by adding the min and max
             # values then resetting them to give this new period a clean start.
             if timestamp > next_boundary:
+                # We may not have enough data for the period granularity.
+                # In this case, skip the periods before the current timestamp.
                 if period_min_temp is None or period_max_temp is None:
-                    LOG.info(f"Missing data for date {date}. Skipping.")
-                    return None
+                    next_boundary = timestamp
+                    period_min_temp = temperature
+                    period_min_datetime = timestamp
+                    period_max_temp = temperature
+                    period_max_datetime = timestamp
 
                 dates_to_add, temps_to_add = self._get_data_to_add(
                     min_temp=period_min_temp,
@@ -190,12 +195,16 @@ class ApplicationDao:
         for i in range(len(dates)):
             data.append({"x": dates[i], "y": temperatures[i]})
 
+        current_temp = temperatures[-1] if temperatures else -1
+        min_temp = min(temperatures) if temperatures else -1
+        max_temp = max(temperatures) if temperatures else -1
+
         return TemperatureDataSet(
             label=f"{sensor_id} - Temperature (°F)",
             data=data,
-            current_temp=temperatures[-1],
-            minimum_temp=min(temperatures),
-            maximum_temp=max(temperatures),
+            current_temp=current_temp,
+            minimum_temp=min_temp,
+            maximum_temp=max_temp,
         )
 
     @staticmethod
