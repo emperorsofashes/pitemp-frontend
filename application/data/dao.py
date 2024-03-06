@@ -19,7 +19,7 @@ from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
     REDIS_VERSION,
     DATE_FORMAT_STRING,
-    ONE_DAY_IN_SECONDS,
+    ONE_DAY_IN_SECONDS, DEFAULT_TIMEZONE,
 )
 from application.data.temperature_data_set import TemperatureDataSet
 from application.data.temperatures import Temperatures
@@ -60,7 +60,7 @@ class ApplicationDao:
             timestamp = entry["x"]
             date_time = datetime.datetime.strptime(timestamp, DATETIME_FORMAT_STRING)
             date_time = date_time.replace(tzinfo=pytz.UTC)
-            local_datetime = date_time.astimezone(pytz.timezone("America/Chicago"))
+            local_datetime = date_time.astimezone(pytz.timezone(DEFAULT_TIMEZONE))
             entry["x"] = datetime.datetime.strftime(local_datetime, DATETIME_FORMAT_STRING)
 
     def get_temperature_history(self, sensor_id: str, days_back: int) -> TemperatureDataSet:
@@ -89,8 +89,8 @@ class ApplicationDao:
         self, sensor_id: str, date: datetime.datetime, periods_per_day: int
     ) -> Optional[Temperatures]:
         # The first instant and last instant of the calendar date
-        min_date = datetime.datetime.combine(date, datetime.time.min)
-        max_date = datetime.datetime.combine(date, datetime.time.max)
+        min_date = datetime.datetime.combine(date, datetime.time.min).replace(tzinfo=pytz.timezone(DEFAULT_TIMEZONE))
+        max_date = datetime.datetime.combine(date, datetime.time.max).replace(tzinfo=pytz.timezone(DEFAULT_TIMEZONE))
         LOG.info(f"Calculating decimated values for date {min_date} from sensor {sensor_id}")
 
         documents = self.pitemp_collection.find(
@@ -110,7 +110,8 @@ class ApplicationDao:
         period_max_datetime = None
 
         for document in documents:
-            timestamp = document["timestamp"]
+            # Timestamps in the database are in UTC
+            timestamp = document["timestamp"].replace(tzinfo=pytz.UTC)
             temperature = document["temp_f"]
 
             if timestamp is None or temperature is None:
@@ -180,12 +181,12 @@ class ApplicationDao:
         return day_temperatures
 
     def _get_decimated_data(self, sensor_id: str, days_back: int) -> TemperatureDataSet:
-        now_datetime = datetime.datetime.now()
+        now_datetime = datetime.datetime.now(pytz.timezone(DEFAULT_TIMEZONE))
 
         dates: List[str] = []
         temperatures: List[float] = []
 
-        current_date = datetime.datetime.now() - datetime.timedelta(days=days_back)
+        current_date = now_datetime - datetime.timedelta(days=days_back)
         futures: List[Optional[Future]] = [None] * (days_back + 1)
         periods_per_day = self._get_periods_per_day(days_back)
 

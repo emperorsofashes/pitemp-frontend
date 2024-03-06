@@ -28,6 +28,12 @@
             <td>{{ piDataSet.maximum_temp|round(2) }} °F</td>
         </tr>
         <tr>
+            <td>pidown</td>
+            <td>{{ pidownDataSet.current_temp|round(2) }} °F</td>
+            <td>{{ pidownDataSet.minimum_temp|round(2) }} °F</td>
+            <td>{{ pidownDataSet.maximum_temp|round(2) }} °F</td>
+        </tr>
+        <tr>
             <td>KATT</td>
             <td>{{ nswDataSet.current_temp|round(2) }} °F</td>
             <td>{{ nswDataSet.minimum_temp|round(2) }} °F</td>
@@ -56,6 +62,13 @@
             fill: false,
             backgroundColor: 'white',
             borderColor: 'white',
+          },
+          {
+            label: "{{ pidownDataSet.label }}",
+            data: {{ pidownDataSet.data | safe }},
+            fill: false,
+            backgroundColor: '#45DD3E',
+            borderColor: '#45DD3E',
           },
           {
             label: "{{ nswDataSet.label }}",
