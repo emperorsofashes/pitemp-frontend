@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="m-3 mx-auto temp-header">
+    <table>
+        <tr>
+            <td><strong>Station</strong></td>
+            <td><strong>Latest</strong></td>
+            <td><strong>Min</strong></td>
+            <td><strong>Max</strong></td>
+        </tr>
+        <tr>
+            <td>pi</td>
+            <td>{{ piDataSet.current_temp|round(2) }} °F</td>
+            <td>{{ piDataSet.minimum_temp|round(2) }} °F</td>
+            <td>{{ piDataSet.maximum_temp|round(2) }} °F</td>
+        </tr>
+        <tr>
+            <td>pidown</td>
+            <td>{{ pidownDataSet.current_temp|round(2) }} °F</td>
+            <td>{{ pidownDataSet.minimum_temp|round(2) }} °F</td>
+            <td>{{ pidownDataSet.maximum_temp|round(2) }} °F</td>
+        </tr>
+        <tr>
+            <td>KATT</td>
+            <td>{{ nswDataSet.current_temp|round(2) }} °F</td>
+            <td>{{ nswDataSet.minimum_temp|round(2) }} °F</td>
+            <td>{{ nswDataSet.maximum_temp|round(2) }} °F</td>
+        </tr>
+    </table>
+</div>
+
+
+<div class="m-3 mx-auto temp-header">
+  <h3>Temperature History</h3>
+</div>
+
+<div id="temperature-chart-div" class="mx-auto">
+    <canvas id="myChart"></canvas>
+</div>
+
+<script>
+    const ctx = document.getElementById('myChart');
+
+    const data = {
+        datasets: [
+          {
+            label: "{{ piDataSet.label }}",
+            data: {{ piDataSet.data | safe }},
+            fill: false,
+            backgroundColor: 'white',
+            borderColor: 'white',
+          },
+          {
+            label: "{{ pidownDataSet.label }}",
+            data: {{ pidownDataSet.data | safe }},
+            fill: false,
+            backgroundColor: '#45DD3E',
+            borderColor: '#45DD3E',
+          },
+          {
+            label: "{{ nswDataSet.label }}",
+            data: {{ nswDataSet.data | safe }},
+            fill: false,
+            backgroundColor: '#EC95E7',
+            borderColor: '#EC95E7',
+          }
+        ]
+      };
+
+    Chart.defaults.font.size = 18;
+    Chart.defaults.color = 'white';
+    const decimals = 2;
+
+    const config = {
+        type: 'line',
+        data: data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          elements: {
+            line: {
+                borderWidth: 2
+            },
+            point: {
+                pointRadius: 1
+            }
+          },
+          interaction: {
+            mode: 'nearest',
+            intersect: false,
+            axis: 'xy'
+          },
+          scales: {
+                x: {
+                    title: {
+                        text: 'Time',
+                        display: true,
+                        font: {
+                            size: 24
+                        }
+                    },
+                    type: 'time',
+                    time: {
+                        unit: 'hour',
+                        stepSize: 2,
+                    },
+                    grid: {
+                        display: true,
+                        color: 'rgb(255,255,255, 0.5)'
+                    },
+                    ticks: {
+                        major: {
+                           enabled: true
+                        },
+                        font: (context) => {
+                            const boldedTicks = context.tick && context.tick.major ? 'bold' : '';
+                            return { weight: boldedTicks };
+                        }
+                    },
+                },
+                y: {
+                    title: {
+                        text: 'Temperature (°F)',
+                        display: true,
+                        font: {
+                            size: 24
+                        }
+                    },
+                    grid: {
+                        display: true,
+                        color: 'rgb(255,255,255, 0.5)'
+                    },
+                }
+          },
+          plugins: {
+            legend: {
+                display: true
+            },
+            annotation: {
+                annotations: [
+                {
+                    type: 'line',
+                    borderDash: [10, 10],
+                    yMin: {{ maximum_temp }},
+                    yMax: {{ maximum_temp }},
+                    borderColor: 'rgb(255, 0, 0)',
+                    borderWidth: 2
+                },
+                {
+                    type: 'line',
+                    borderDash: [10, 10],
+                    yMin: {{ minimum_temp }},
+                    yMax: {{ minimum_temp }},
+                    borderColor: 'rgb(20, 195, 204)',
+                    borderWidth: 2
+                }
+                ]
+            }
+          }
+        }
+      };
+
+    new Chart(ctx, config);
+</script>
+
+{% endblock %}
