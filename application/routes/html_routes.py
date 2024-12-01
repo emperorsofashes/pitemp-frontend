@@ -118,11 +118,16 @@ def free_space_graph():
     for i, free_space in enumerate(drive_data):
         drive_data[i] = [free_space[time_labels.index(ts)] if ts in time_labels else 0 for ts in time_labels]
 
+    # Sort drive data based on the most recent free space (last value in each list)
+    sorted_drive_data = sorted(zip(drive_letters, drive_data), key=lambda x: x[1][-1], reverse=True)
+    sorted_drive_letters = [x[0] for x in sorted_drive_data]
+    sorted_drive_data = [x[1] for x in sorted_drive_data]
+
     return render_template(
         "disks/disks_free_space.html",
         time_labels=time_labels,
-        drive_data=drive_data,
-        drive_letters=drive_letters
+        drive_data=sorted_drive_data,
+        drive_letters=sorted_drive_letters
     )
 
 
