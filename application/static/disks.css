@@ -83,18 +83,35 @@ th.sortable:hover {
 }
 
 .rounded-corner-box {
-    background-color: #f8f9fa; /* Light background color */
+    background-color: #f8f9fa;
     padding: 20px;
-    border-radius: 10px; /* Rounded corners */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
 }
 
-.rounded-corner-box h3 {
+.drive-letter {
     font-size: 2em;
     margin-bottom: 15px;
 }
 
+/* Container for grid layout */
+.container-fluid {
+    padding: 0;
+}
+
+.drives-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Auto-adjusting columns */
+    gap: 15px; /* Space between the boxes */
+    padding: 20px;
+}
+
+/* Ensure that the chart containers take up the available space */
 .container {
     margin-top: 20px;
 }
