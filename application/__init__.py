@@ -6,7 +6,8 @@ from flask import Flask
 from flask_compress import Compress
 from redis import Redis
 
-from application.constants.app_constants import DATABASE_CONFIG_KEY
+from application.constants.app_constants import DATABASE_CONFIG_KEY, BEERS_DATABASE_CONFIG_KEY
+from application.data.beer.dao import BeerDao
 from application.data.custom_json_encoder import CustomJsonEncoder
 from application.data.dao import ApplicationDao
 from application.routes.html_routes import HTML_BLUEPRINT
@@ -40,6 +41,9 @@ def create_flask_app() -> Flask:
 
     dao = ApplicationDao(cache=cache)
     app.config[DATABASE_CONFIG_KEY] = dao
+
+    beer_dao = BeerDao(cache=cache)
+    app.config[BEERS_DATABASE_CONFIG_KEY] = beer_dao
 
     # This must be set in the environment as a secret
     app.secret_key = os.environ["SECRET_KEY"]

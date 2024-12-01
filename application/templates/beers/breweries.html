@@ -1,0 +1,116 @@
+{% extends "beers/base.html" %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+    <h1 class="text-center">Breweries</h1>
+    <p class="text-center">Total: {{ breweries | length }} breweries with at least one checkin</p>
+    <table id="breweryTable">
+        <thead>
+            <tr>
+                <th class="sortable" onclick="sortTable(0)">
+                    Name
+                    <span class="sort-icon none" id="icon-0"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(1)">
+                    Type
+                    <span class="sort-icon none" id="icon-1"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(2)">
+                    Location
+                    <span class="sort-icon none" id="icon-2"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(3)">
+                    Country
+                    <span class="sort-icon none" id="icon-3"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(4)">
+                    Avg Rating
+                    <span class="sort-icon none" id="icon-4"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(5)">
+                    Checkins
+                    <span class="sort-icon none" id="icon-5"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(6)">
+                    First Checkin
+                    <span class="sort-icon none" id="icon-6"></span>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for brewery in breweries %}
+            <tr>
+                <td>{{ brewery.name }}</td>
+                <td>{{ brewery.type }}</td>
+                <td>{{ brewery.full_location }}</td>
+                <td>{{ brewery.country }}</td>
+                <td>{% if brewery.avg_rating != -1 %}{{ brewery.avg_rating | round(2) }}{% else %}{% endif %}</td>
+                <td>{{ brewery.num_checkins }}</td>
+                <td>{{ brewery.first_checkin.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        let currentSortColumn = null;
+        let currentSortOrder = null;
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('breweryTable');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            const ths = table.querySelectorAll('thead th');
+            const icons = table.querySelectorAll('.sort-icon');
+
+            const th = ths[columnIndex];
+            const ascending = currentSortColumn === columnIndex ? !currentSortOrder : true;
+
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.children[columnIndex].textContent.trim();
+                const cellB = rowB.children[columnIndex].textContent.trim();
+
+                let comparison = 0;
+                if (columnIndex === 4 || columnIndex === 5) { // Numeric columns
+                    // Treat empty cells as -1
+                    const numA = cellA === '' ? -1 : parseFloat(cellA);
+                    const numB = cellB === '' ? -1 : parseFloat(cellB);
+                    comparison = numA - numB;
+                } else if (columnIndex === 6) { // Date column
+                    comparison = new Date(cellA) - new Date(cellB);
+                } else {
+                    comparison = cellA.localeCompare(cellB);
+                }
+
+                return ascending ? comparison : -comparison;
+            });
+
+            currentSortColumn = columnIndex;
+            currentSortOrder = ascending;
+
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Update icons
+            icons.forEach((icon, index) => {
+                icon.className = 'sort-icon none';
+            });
+            const icon = document.getElementById(`icon-${columnIndex}`);
+            icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
+        }
+
+        // Call sortTable on page load for the "Name" column (index 0)
+        window.onload = function() {
+            sortTable(0);
+        };
+    </script>
+
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "beers/base.html" %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+    <h1 class="text-center">Styles</h1>
+    <p class="text-center">Total: {{ styles | length }} styles with at least one checkin</p>
+    <table id="styleTable">
+        <thead>
+            <tr>
+                <th class="sortable" onclick="sortTable(0)">
+                    Style
+                    <span class="sort-icon none" id="icon-0"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(1)">
+                    Checkins
+                    <span class="sort-icon none" id="icon-1"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(2)">
+                    Avg Rating
+                    <span class="sort-icon none" id="icon-2"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(3)">
+                    Min Rating
+                    <span class="sort-icon none" id="icon-3"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(4)">
+                    Max Rating
+                    <span class="sort-icon none" id="icon-4"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(5)">
+                    Median Rating
+                    <span class="sort-icon none" id="icon-5"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(6)">
+                    First Checkin
+                    <span class="sort-icon none" id="icon-6"></span>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for style in styles %}
+            <tr>
+                <td>{{ style.name }}</td>
+                <td>{{ style.num_checkins }}</td>
+                <td>{% if style.avg_rating != -1 %}{{ style.avg_rating | round(2) }}{% else %}{% endif %}</td>
+                <td>{% if style.min_rating != -1 %}{{ style.min_rating | round(2) }}{% else %}{% endif %}</td>
+                <td>{% if style.max_rating != -1 %}{{ style.max_rating | round(2) }}{% else %}{% endif %}</td>
+                <td>{% if style.median_rating != -1 %}{{ style.median_rating | round(2) }}{% else %}{% endif %}</td>
+                <td>{{ style.first_checkin.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        let currentSortColumn = null;
+        let currentSortOrder = null;
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('styleTable');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            const ths = table.querySelectorAll('thead th');
+            const icons = table.querySelectorAll('.sort-icon');
+
+            const th = ths[columnIndex];
+            const ascending = currentSortColumn === columnIndex ? !currentSortOrder : true;
+
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.children[columnIndex].textContent.trim();
+                const cellB = rowB.children[columnIndex].textContent.trim();
+
+                let comparison = 0;
+                if (columnIndex === 0) {
+                    comparison = cellA.localeCompare(cellB);
+                } else if (columnIndex === 6) { // Date column
+                    comparison = new Date(cellA) - new Date(cellB);
+                } else {
+                    // Treat empty cells as -1
+                    const numA = cellA === '' ? -1 : parseFloat(cellA);
+                    const numB = cellB === '' ? -1 : parseFloat(cellB);
+                    comparison = numA - numB;
+                }
+
+                return ascending ? comparison : -comparison;
+            });
+
+            currentSortColumn = columnIndex;
+            currentSortOrder = ascending;
+
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Update icons
+            icons.forEach((icon, index) => {
+                icon.className = 'sort-icon none';
+            });
+            const icon = document.getElementById(`icon-${columnIndex}`);
+            icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
+        }
+
+        // Call sortTable on page load for the "Name" column (index 0)
+        window.onload = function() {
+            sortTable(0);
+        };
+    </script>
+
+{% endblock %}

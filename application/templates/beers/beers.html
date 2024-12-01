@@ -1,0 +1,120 @@
+{% extends "beers/base.html" %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+    <h1 class="text-center">Beers</h1>
+    <p class="text-center">Total: {{ beers | length }} distinct beers</p>
+    <table id="beerTable">
+        <thead>
+            <tr>
+                <th class="sortable" onclick="sortTable(0)">
+                    Name
+                    <span class="sort-icon none" id="icon-0"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(1)">
+                    ID
+                    <span class="sort-icon none" id="icon-1"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(2)">
+                    Brewery
+                    <span class="sort-icon none" id="icon-2"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(3)">
+                    Country
+                    <span class="sort-icon none" id="icon-3"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(4)">
+                    Rating
+                    <span class="sort-icon none" id="icon-4"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(5)">
+                    Style
+                    <span class="sort-icon none" id="icon-5"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(6)">
+                    ABV
+                    <span class="sort-icon none" id="icon-6"></span>
+                </th>
+                <th class="sortable" onclick="sortTable(7)">
+                    First Check-in
+                    <span class="sort-icon none" id="icon-7"></span>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for beer in beers %}
+            <tr>
+                <td>{{ beer.name }}</td>
+                <td>{{ beer.id }}</td>
+                <td>{{ beer.brewery }}</td>
+                <td>{{ beer.country }}</td>
+                <td>{% if beer.rating != -1 %}{{ beer.rating }}{% else %}{% endif %}</td>
+                <td>{{ beer.style }}</td>
+                <td>{% if beer.abv != -1 %}{{ beer.abv }}{% else %}{% endif %}</td>
+                <td>{{ beer.first_checkin.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        let currentSortColumn = null;
+        let currentSortOrder = null;
+
+        function sortTable(columnIndex, defaultOrder = null) {
+            const table = document.getElementById('beerTable');
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            const ths = table.querySelectorAll('thead th');
+            const icons = table.querySelectorAll('.sort-icon');
+
+            const th = ths[columnIndex];
+            const ascending = defaultOrder !== null ? defaultOrder : currentSortColumn === columnIndex ? !currentSortOrder : true;
+
+            rows.sort((rowA, rowB) => {
+                const cellA = rowA.children[columnIndex].textContent.trim();
+                const cellB = rowB.children[columnIndex].textContent.trim();
+
+                let comparison = 0;
+                if (columnIndex === 1 || columnIndex === 4 || columnIndex === 6) { // Numeric columns
+                    const numA = cellA === '' ? -1 : parseFloat(cellA); // Treat empty cells as -1
+                    const numB = cellB === '' ? -1 : parseFloat(cellB);
+                    comparison = numA - numB;
+                } else if (columnIndex === 6) { // Date column
+                    comparison = new Date(cellA) - new Date(cellB);
+                } else { // Text columns
+                    comparison = cellA.localeCompare(cellB);
+                }
+
+                return ascending ? comparison : -comparison;
+            });
+
+            currentSortColumn = columnIndex;
+            currentSortOrder = ascending;
+
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            rows.forEach(row => tbody.appendChild(row));
+
+            // Update icons
+            icons.forEach((icon, index) => {
+                icon.className = 'sort-icon none';
+            });
+            const icon = document.getElementById(`icon-${columnIndex}`);
+            icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
+        }
+
+        // Call sortTable on page load for the "First Check-in" column (index 6) in descending order
+        window.onload = function() {
+            sortTable(7, false); // false = descending order
+        };
+    </script>
+
+{% endblock %}
