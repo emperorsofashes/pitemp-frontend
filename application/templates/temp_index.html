@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+<div id="center-links" class="text-center">
+    <p></p>
+    <h1>Days Back:</h1>
+    <a href="{{ request.url + '/7' }}"><h1>7 Days</h1></a>
+    <a href="{{ request.url + '/3' }}"><h1>3 Days</h1></a>
+    <a href="{{ request.url + '/1' }}"><h1>1 Day</h1></a>
+</div>
+
+{% endblock %}
