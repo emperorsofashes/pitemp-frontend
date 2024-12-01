@@ -80,6 +80,19 @@ def disks_snapshot():
                            total_free=total_free, total_used=total_used, total_percent_used=total_percent_used)
 
 
+@HTML_BLUEPRINT.route("/disks/overview")
+def disks_overview():
+    disk_dao = _get_disks_dao()
+    data = disk_dao.get_drive_letter_to_data()
+    drive_snapshot = {key: values[-1] for key, values in data.items() if values}
+    total_capacity = sum(snapshot.capacity_bytes for snapshot in drive_snapshot.values())
+    total_free = sum(snapshot.free_bytes for snapshot in drive_snapshot.values())
+    total_used = sum(snapshot.used_bytes for snapshot in drive_snapshot.values())
+    total_percent_used = (total_used / total_capacity) * 100 if total_capacity > 0 else 0.0
+    return render_template("disks/overview.html", drives=drive_snapshot, total_capacity=total_capacity,
+                           total_free=total_free, total_used=total_used, total_percent_used=total_percent_used)
+
+
 def _get_page(days_back: int):
     dao = _get_dao()
 

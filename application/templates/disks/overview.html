@@ -1,0 +1,79 @@
+{% extends "disks/base.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<h1>Disk Space Snapshot</h1>
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="container">
+        <div class="row">
+            {% for drive_letter, snapshot in drives|dictsort %}
+            <div class="col-md-4 mb-4">
+                <div class="rounded-corner-box">
+                    <h3>{{ drive_letter }}</h3>
+                    <canvas id="chart-{{ drive_letter }}" width="200" height="200"></canvas>
+                    <p>
+                        Capacity: {{ snapshot.capacity_bytes|bytes_to_display }}<br>
+                        Free: {{ snapshot.free_bytes|bytes_to_display }}<br>
+                        Used: {{ snapshot.used_bytes|bytes_to_display }}<br>
+                        Percent Used: {{ "%.2f"|format(snapshot.percent_used) }}%
+                    </p>
+                </div>
+            </div>
+
+            <script>
+                var ctx{{ drive_letter }} = document.getElementById('chart-{{ drive_letter }}').getContext('2d');
+                var chart{{ drive_letter }} = new Chart(ctx{{ drive_letter }}, {
+                    type: 'doughnut', // "doughnut" makes the ring chart
+                    data: {
+                        labels: ['Used', 'Free'], // Labels for the chart
+                        datasets: [{
+                            data: [{{ snapshot.used_bytes }}, {{ snapshot.free_bytes }}], // Data to represent
+                            backgroundColor: ['#ff4d4d', '#4dff88'], // Colors for used and free
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(tooltipItem) {
+                                        // Custom tooltip formatting to show GB/TB
+                                        function bytesToReadable(value) {
+                                            if (value >= 1024**4) {
+                                                return (value / 1024**4).toFixed(2) + ' TB';
+                                            } else if (value >= 1024**3) {
+                                                return (value / 1024**3).toFixed(2) + ' GB';
+                                            } else if (value >= 1024**2) {
+                                                return (value / 1024**2).toFixed(2) + ' MB';
+                                            } else if (value >= 1024) {
+                                                return (value / 1024).toFixed(2) + ' KB';
+                                            } else {
+                                                return value + ' bytes';
+                                            }
+                                        }
+
+                                        var value = tooltipItem.raw;
+                                        return bytesToReadable(value);
+                                    }
+                                }
+                            },
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            </script>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
