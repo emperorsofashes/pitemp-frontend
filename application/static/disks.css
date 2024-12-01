@@ -15,9 +15,9 @@ body {
 }
 
 .fullTable, th, td {
-    background-color: #1e1e1e; /* Dark background for table */
-    color: white; /* Light text */
-    border: 1px solid #444; /* Darker border */
+    background-color: #1e1e1e;
+    color: white;
+    border: 1px solid #444;
 }
 
 th, td {

@@ -1,5 +1,6 @@
 body {
-    color: black;
+    background-color: #202020 !important;
+    color: white;
 }
 
 table {
@@ -12,6 +13,9 @@ th, td {
     padding: 8px;
     text-align: left;
     border: 1px solid #ddd;
+    background-color: #1e1e1e;
+    color: white;
+    border: 1px solid #444;
 }
 
 th {
@@ -20,7 +24,7 @@ th {
 }
 
 th.sortable:hover {
-    background-color: #f0f0f0;
+    background-color: #444;
 }
 
 .sort-icon {
@@ -75,4 +79,5 @@ th.sortable:hover {
 
 #content-block-div {
     margin-top: 50px;
+    color: white;
 }
