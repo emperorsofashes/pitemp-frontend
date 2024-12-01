@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import os
 import time
 from asyncio import Future
 from concurrent.futures import ThreadPoolExecutor
@@ -10,7 +9,6 @@ from typing import List, Optional
 import fakeredis
 import pytz
 import redis
-from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 

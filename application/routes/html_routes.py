@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, render_template
 
 from application import DisksDao, DISKS_DATABASE_CONFIG_KEY
 from application.constants.app_constants import (
-    DATABASE_CONFIG_KEY, BEERS_DATABASE_CONFIG_KEY,
+    DATABASE_CONFIG_KEY, BEERS_DATABASE_CONFIG_KEY, DATETIME_FORMAT_STRING,
 )
 from application.data.beer.dao import BeerDao
 from application.data.dao import ApplicationDao
@@ -91,6 +91,39 @@ def disks_overview():
     total_percent_used = (total_used / total_capacity) * 100 if total_capacity > 0 else 0.0
     return render_template("disks/overview.html", drives=drive_snapshot, total_capacity=total_capacity,
                            total_free=total_free, total_used=total_used, total_percent_used=total_percent_used)
+
+
+@HTML_BLUEPRINT.route("/disks/free_space")
+def free_space_graph():
+    disk_dao = _get_disks_dao()
+    data = disk_dao.get_drive_letter_to_data()
+
+    # Prepare data for Chart.js
+    time_labels = []
+    drive_data = []
+    drive_letters = list(data.keys())
+
+    # Organize time labels and free space data
+    for drive_letter, snapshots in data.items():
+        free_space = []
+        for snapshot in snapshots:
+            timestamp = snapshot.timestamp.strftime(DATETIME_FORMAT_STRING)
+            if timestamp not in time_labels:
+                time_labels.append(timestamp)
+            free_space.append(snapshot.free_bytes)
+        drive_data.append(free_space)
+
+    # Sort time labels and align data
+    time_labels = sorted(time_labels)
+    for i, free_space in enumerate(drive_data):
+        drive_data[i] = [free_space[time_labels.index(ts)] if ts in time_labels else 0 for ts in time_labels]
+
+    return render_template(
+        "disks/disks_free_space.html",
+        time_labels=time_labels,
+        drive_data=drive_data,
+        drive_letters=drive_letters
+    )
 
 
 def _get_page(days_back: int):
