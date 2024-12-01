@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "disks/base.html" %}
 
 {% block content %}
 <div id="content-block-div">
@@ -9,35 +9,38 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        // Register the datalabels plugin with Chart.js (for Chart.js v3+)
+        Chart.register(ChartDataLabels);
+
         const ctx = document.getElementById('freeSpaceChart').getContext('2d');
 
         // Data provided by Jinja2
         const timeLabels = {{ time_labels | tojson }};
         const driveData = {{ drive_data | tojson }};
         const driveNames = {{ drive_letters | tojson }};
-
-        // Expanded 8-color palette
         const backgroundColors = [
-            'rgba(75, 192, 192, 0.5)', // Teal
+            'rgba(0, 255, 0, 0.5)', // Green (changed from teal)
             'rgba(255, 99, 132, 0.5)', // Red
             'rgba(54, 162, 235, 0.5)', // Blue
             'rgba(255, 206, 86, 0.5)', // Yellow
             'rgba(153, 102, 255, 0.5)', // Purple
             'rgba(255, 159, 64, 0.5)',  // Orange
-            'rgba(0, 255, 0, 0.5)',    // Green
-            'rgba(255, 105, 180, 0.5)' // HotPink
+            'rgba(255, 99, 255, 0.5)',  // Pink
+            'rgba(128, 128, 128, 0.5)'  // Gray
         ];
         const borderColors = [
-            'rgba(75, 192, 192, 1)', // Teal
+            'rgba(0, 255, 0, 1)', // Green (changed from teal)
             'rgba(255, 99, 132, 1)', // Red
             'rgba(54, 162, 235, 1)', // Blue
             'rgba(255, 206, 86, 1)', // Yellow
             'rgba(153, 102, 255, 1)', // Purple
             'rgba(255, 159, 64, 1)',  // Orange
-            'rgba(0, 255, 0, 1)',     // Green
-            'rgba(255, 105, 180, 1)'  // HotPink
+            'rgba(255, 99, 255, 1)',  // Pink
+            'rgba(128, 128, 128, 1)'  // Gray
         ];
 
         const datasets = driveData.map((data, index) => ({
@@ -75,6 +78,32 @@
                                 return `${tooltipItem.dataset.label}: ${value.toFixed(2)} ${unit}`;
                             }
                         }
+                    },
+                    datalabels: {
+                        display: true,
+                        align: 'top',  // Place the label at the top of the point
+                        color: 'white',  // Text color for the label (changed to white)
+                        font: {
+                            weight: 'bold',
+                            size: 12 // Changed font size to 12 pt
+                        },
+                        formatter: function(value, context) {
+                            // Check if this is the topmost dataset (the last in the stack) at this point
+                            const isTopDataset = context.datasetIndex === context.chart.data.datasets.length - 1;
+
+                            if (!isTopDataset) {
+                                return ''; // Do not display anything for non-top data points
+                            }
+
+                            // Calculate the cumulative free space up to this point
+                            let total = 0;
+                            for (let i = 0; i < context.chart.data.datasets.length; i++) {
+                                total += context.chart.data.datasets[i].data[context.dataIndex];
+                            }
+
+                            // Only display the label for the topmost dataset in each stack
+                            return total.toFixed(2) + ' TB';  // Total free space for that date
+                        }
                     }
                 },
                 responsive: true,
@@ -98,4 +127,5 @@
         });
     });
 </script>
+
 {% endblock %}
