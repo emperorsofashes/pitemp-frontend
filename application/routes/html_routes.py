@@ -2,6 +2,7 @@ import logging
 
 from flask import Blueprint, current_app, render_template
 
+from application import DisksDao, DISKS_DATABASE_CONFIG_KEY
 from application.constants.app_constants import (
     DATABASE_CONFIG_KEY, BEERS_DATABASE_CONFIG_KEY,
 )
@@ -61,6 +62,24 @@ def styles_page():
     return render_template("beers/styles.html", styles=styles)
 
 
+@HTML_BLUEPRINT.route("/disks")
+def disks_index():
+    return render_template("disks/index.html")
+
+
+@HTML_BLUEPRINT.route("/disks/snapshot")
+def disks_snapshot():
+    disk_dao = _get_disks_dao()
+    data = disk_dao.get_drive_letter_to_data()
+    drive_snapshot = {key: values[-1] for key, values in data.items() if values}
+    total_capacity = sum(snapshot.capacity_bytes for snapshot in drive_snapshot.values())
+    total_free = sum(snapshot.free_bytes for snapshot in drive_snapshot.values())
+    total_used = sum(snapshot.used_bytes for snapshot in drive_snapshot.values())
+    total_percent_used = (total_used / total_capacity) * 100 if total_capacity > 0 else 0.0
+    return render_template("disks/snapshot.html", drives=drive_snapshot, total_capacity=total_capacity,
+                           total_free=total_free, total_used=total_used, total_percent_used=total_percent_used)
+
+
 def _get_page(days_back: int):
     dao = _get_dao()
 
@@ -84,3 +103,7 @@ def _get_dao() -> ApplicationDao:
 
 def _get_beers_dao() -> BeerDao:
     return current_app.config[BEERS_DATABASE_CONFIG_KEY]
+
+
+def _get_disks_dao() -> DisksDao:
+    return current_app.config[DISKS_DATABASE_CONFIG_KEY]

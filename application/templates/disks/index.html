@@ -1,0 +1,16 @@
+{% extends "disks/base.html" %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+<div id="links">
+    <h1><a href="{{ request.url + '/snapshot' }}">Snapshot</a></h1>
+</div>
+{% endblock %}

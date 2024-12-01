@@ -1,0 +1,130 @@
+{% extends "disks/base.html" %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+<div>
+    <h1>Disks Snapshot</h1>
+</div>
+
+<!-- Section for displaying the totals prominently -->
+<table id="totalsTable">
+    <tbody>
+    <tr>
+        <td><strong>Total Capacity:</strong></td>
+        <td>{{ total_capacity|bytes_to_display }}</td>
+    </tr>
+    <tr>
+        <td><strong>Total Free Space:</strong></td>
+        <td>{{ total_free|bytes_to_display }}</td>
+    </tr>
+    <tr>
+        <td><strong>Total Used Space:</strong></td>
+        <td>{{ total_used|bytes_to_display }}</td>
+    </tr>
+    <tr>
+        <td><strong>Total Percent Used:</strong></td>
+        <td>{{ "%.2f"|format(total_percent_used) }}%</td>
+    </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<!-- Table of individual drive data -->
+<table id="drivesTable" class="fullTable">
+    <thead>
+    <tr>
+        <th class="sortable" onclick="sortTable(0)">
+            Drive Letter
+            <span class="sort-icon none" id="icon-0"></span>
+        </th>
+        <th class="sortable" onclick="sortTable(1)">
+            Capacity
+            <span class="sort-icon none" id="icon-1"></span>
+        </th>
+        <th class="sortable" onclick="sortTable(2)">
+            Free
+            <span class="sort-icon none" id="icon-2"></span>
+        </th>
+        <th class="sortable" onclick="sortTable(3)">
+            Used
+            <span class="sort-icon none" id="icon-3"></span>
+        </th>
+        <th class="sortable" onclick="sortTable(4)">
+            Percent Used
+            <span class="sort-icon none" id="icon-4"></span>
+        </th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for drive_letter, snapshot in drives.items() %}
+    <tr>
+        <td>{{ drive_letter }}</td>
+        <td data-raw="{{ snapshot.capacity_bytes }}">{{ snapshot.capacity_bytes|bytes_to_display }}</td>
+        <td data-raw="{{ snapshot.free_bytes }}">{{ snapshot.free_bytes|bytes_to_display }}</td>
+        <td data-raw="{{ snapshot.used_bytes }}">{{ snapshot.used_bytes|bytes_to_display }}</td>
+        <td data-raw="{{ snapshot.percent_used }}">{{ "%.2f"|format(snapshot.percent_used) }}%</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let currentSortColumn = null;
+    let currentSortOrder = null;
+
+    function sortTable(columnIndex, defaultOrder = null) {
+        const table = document.getElementById('drivesTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const ths = table.querySelectorAll('thead th');
+        const icons = table.querySelectorAll('.sort-icon');
+
+        const th = ths[columnIndex];
+        const ascending = defaultOrder !== null ? defaultOrder : currentSortColumn === columnIndex ? !currentSortOrder : true;
+
+        rows.sort((rowA, rowB) => {
+            const cellA = rowA.children[columnIndex];
+            const cellB = rowB.children[columnIndex];
+
+            const rawA = parseFloat(cellA.getAttribute('data-raw')) || -1; // Treat empty cells as -1
+            const rawB = parseFloat(cellB.getAttribute('data-raw')) || -1;
+
+            let comparison = 0;
+            if (columnIndex === 0) { // Text columns
+                comparison = cellA.textContent.trim().localeCompare(cellB.textContent.trim());
+            } else { // Numeric columns
+                comparison = rawA - rawB;
+            }
+
+            return ascending ? comparison : -comparison;
+        });
+
+        currentSortColumn = columnIndex;
+        currentSortOrder = ascending;
+
+        const tbody = table.querySelector('tbody');
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+
+        // Update icons
+        icons.forEach((icon, index) => {
+            icon.className = 'sort-icon none';
+        });
+        const icon = document.getElementById(`icon-${columnIndex}`);
+        icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
+    }
+
+    // Sort by name on page load
+    window.onload = function() {
+        sortTable(0, true);
+    };
+</script>
+{% endblock %}

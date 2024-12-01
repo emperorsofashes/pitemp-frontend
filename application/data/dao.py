@@ -30,22 +30,16 @@ LOG = logging.getLogger(__name__)
 
 
 class ApplicationDao:
-    def __init__(self, database: Database = None, cache: redis.Redis = None):
+    def __init__(self, client, database: Database = None, cache: redis.Redis = None):
         # If no cache is given, spin up a fake one
         if cache is None:
             self.cache = fakeredis.FakeStrictRedis(version=REDIS_VERSION)
         else:
             self.cache = cache
 
+        self.client =  client
         # If no database provided, connect to one
         if database is None:
-            username = os.environ.get("MONGO_USER")
-            password = os.environ.get("MONGO_PASSWORD")
-            host = os.environ.get("MONGO_HOST")
-            self.client = MongoClient(
-                f"mongodb+srv://{username}:{password}@{host}/{DATABASE_NAME}?retryWrites=true&w=majority"
-            )
-
             database: Database = self.client[DATABASE_NAME]
 
         # Set up database and collection variables

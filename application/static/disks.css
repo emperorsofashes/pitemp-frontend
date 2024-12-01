@@ -1,0 +1,83 @@
+body {
+    color: black;
+}
+
+#content-block-div {
+    margin-left: 2.5%;
+    margin-right: 2.5%;
+}
+
+.fullTable {
+    width: 100%;
+    margin: 0 auto;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+th {
+    cursor: pointer;
+    position: relative;
+}
+
+th.sortable:hover {
+    background-color: #f0f0f0;
+}
+
+.sort-icon {
+    font-size: 0.8em;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.sort-icon.asc::before {
+    content: '▲'; /* Up arrow */
+}
+
+.sort-icon.desc::before {
+    content: '▼'; /* Down arrow */
+}
+
+.sort-icon.none::before {
+    content: '▲▼'; /* No arrow */
+}
+
+.header-bar {
+    position: fixed; /* Sticks the header bar to the top */
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #333;
+    padding: 10px;
+    color: #fff;
+    z-index: 1000; /* Keeps it above other content */
+}
+
+/* Style for the link */
+.header-bar a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.header-bar a:hover {
+    text-decoration: underline;
+}
+
+#links {
+    margin-left: 20px;
+    margin-top: 50px;
+}
+
+#content-block-div {
+    margin-top: 50px;
+}
