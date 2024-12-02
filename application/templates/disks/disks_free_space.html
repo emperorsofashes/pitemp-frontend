@@ -20,7 +20,11 @@
         const ctx = document.getElementById('freeSpaceChart').getContext('2d');
 
         // Data provided by Jinja2
-        const timeLabels = {{ time_labels | tojson }};
+        // Format timeLabels to show only the date (YYYY-MM-DD)
+        const formattedTimeLabels = {{ time_labels | tojson }}.map(timestamp => {
+            const date = new Date(timestamp); // Convert timestamp to Date object
+            return date.toISOString().split('T')[0]; // Extract only the date part
+        });
         const driveData = {{ drive_data | tojson }};
         const driveNames = {{ drive_letters | tojson }};
         const backgroundColors = [
@@ -56,7 +60,7 @@
         new Chart(ctx, {
             type: 'line', // Line chart for stacked area visualization
             data: {
-                labels: timeLabels,
+                labels: formattedTimeLabels,
                 datasets: datasets
             },
             options: {
