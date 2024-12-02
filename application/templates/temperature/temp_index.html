@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block header %}
+<link rel="shortcut icon" href="{{ url_for('static', filename='temperature.ico') }}">
+<title>Temperature</title>
+{% endblock %}
+
 {% block content %}
 
 {% with messages = get_flashed_messages() %}

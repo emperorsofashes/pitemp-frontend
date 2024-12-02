@@ -1,0 +1,42 @@
+.header-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #333;
+    padding: 10px;
+    color: #fff;
+    z-index: 1000;
+}
+
+a:hover {
+    color: #00bcd4 !important;
+}
+
+.header-bar a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.header-separator {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.header-bar a:hover {
+    text-decoration: underline;
+}
+
+#content-block-div {
+    margin-top: 50px;
+    color: white;
+}
+
+body {
+    background-color: #202020 !important;
+    color: white;
+}

@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block header %}
+    <link rel="shortcut icon" href="{{ url_for('static', filename='toolbox.ico') }}">
+    <title>Utilities</title>
+{% endblock %}
+
 {% block content %}
 
 {% with messages = get_flashed_messages() %}

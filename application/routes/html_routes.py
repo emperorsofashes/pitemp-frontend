@@ -21,7 +21,7 @@ def homepage():
 
 @HTML_BLUEPRINT.route("/temp")
 def temp_index():
-    return render_template("temp_index.html")
+    return render_template("temperature/temp_index.html")
 
 
 @HTML_BLUEPRINT.route("/temp/<int:days_back>")
@@ -139,7 +139,7 @@ def _get_page(days_back: int):
     nsw_data_set = dao.get_temperature_history(sensor_id="KATT", days_back=days_back)
 
     return render_template(
-        "temps.html",
+        "temperature/temps.html",
         piDataSet=pi_data_set,
         pidownDataSet=pidown_data_set,
         nswDataSet=nsw_data_set,
