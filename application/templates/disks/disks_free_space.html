@@ -2,18 +2,15 @@
 
 {% block header %}
     {% include "disks/header.html" %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 {% endblock %}
 
 {% block content %}
-<div id="content-block-div">
-    <h1>Drive Free Space Over Time</h1>
-    <div class="chart-container" style="height:85vh; width:80vw; margin: auto">
-        <canvas id="freeSpaceChart"></canvas>
-    </div>
+<h2>Drive Free Space Over Time</h2>
+<div class="chart-container" style="height:80vh; width:93vw; margin: auto">
+    <canvas id="freeSpaceChart"></canvas>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
