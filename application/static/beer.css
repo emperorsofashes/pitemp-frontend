@@ -1,8 +1,3 @@
-body {
-    background-color: #202020 !important;
-    color: white;
-}
-
 table {
     width: 95%;
     margin: 0 auto;
@@ -12,15 +7,17 @@ table {
 th, td {
     padding: 8px;
     text-align: left;
-    border: 1px solid #ddd;
+    border: 1px solid #444;
     background-color: #1e1e1e;
     color: white;
-    border: 1px solid #444;
 }
 
 th {
     cursor: pointer;
     position: relative;
+    padding-right: 35px; /* Add extra space to the right for the icon */
+    line-height: 1.5; /* Ensures enough height for text and icons */
+    height: 40px; /* Sets a fixed height for the header row */
 }
 
 th.sortable:hover {
@@ -32,7 +29,7 @@ th.sortable:hover {
     position: absolute;
     right: 10px;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(-50%); /* Vertically center the icon */
 }
 
 .sort-icon.asc::before {
@@ -45,39 +42,4 @@ th.sortable:hover {
 
 .sort-icon.none::before {
     content: '▲▼'; /* No arrow */
-}
-
-.header-bar {
-    position: fixed; /* Sticks the header bar to the top */
-    top: 0;
-    left: 0;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    background-color: #333;
-    padding: 10px;
-    color: #fff;
-    z-index: 1000; /* Keeps it above other content */
-}
-
-/* Style for the link */
-.header-bar a {
-    color: #fff;
-    text-decoration: none;
-    font-size: 16px;
-}
-
-.header-bar a:hover {
-    text-decoration: underline;
-}
-
-#links {
-    margin-left: 20px;
-    margin-top: 50px;
-}
-
-#content-block-div {
-    margin-top: 50px;
-    color: white;
 }
