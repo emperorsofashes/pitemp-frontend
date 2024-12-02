@@ -33,13 +33,13 @@ th.sortable:hover {
 }
 
 .sort-icon.asc::before {
-    content: '▲'; /* Up arrow */
+    content: '▲';
 }
 
 .sort-icon.desc::before {
-    content: '▼'; /* Down arrow */
+    content: '▼';
 }
 
 .sort-icon.none::before {
-    content: '▲▼'; /* No arrow */
+    content: '▲▼';
 }
