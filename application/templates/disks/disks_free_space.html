@@ -3,7 +3,7 @@
 {% block content %}
 <div id="content-block-div">
     <h1>Drive Free Space Over Time</h1>
-    <div class="chart-container">
+    <div class="chart-container" style="height:85vh; width:80vw; margin: auto">
         <canvas id="freeSpaceChart"></canvas>
     </div>
 </div>
@@ -15,6 +15,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         // Register the datalabels plugin with Chart.js (for Chart.js v3+)
         Chart.register(ChartDataLabels);
+        Chart.defaults.font.size = 16;
 
         const ctx = document.getElementById('freeSpaceChart').getContext('2d');
 
@@ -62,7 +63,8 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Remaining Free Space Over Time'
+                        text: 'Drive Letters',
+                        color: 'white',
                     },
                     tooltip: {
                         mode: 'index',
@@ -79,13 +81,18 @@
                             }
                         }
                     },
+                    legend: {
+                        labels: {
+                            color: 'white'
+                        }
+                    },
                     datalabels: {
                         display: true,
                         align: 'top',  // Place the label at the top of the point
                         color: 'white',  // Text color for the label (changed to white)
                         font: {
                             weight: 'bold',
-                            size: 12 // Changed font size to 12 pt
+                            size: 12 // Override default for labels to be smaller
                         },
                         formatter: function(value, context) {
                             // Check if this is the topmost dataset (the last in the stack) at this point
@@ -107,20 +114,35 @@
                     }
                 },
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     x: {
                         title: {
                             display: true,
-                            text: 'Time'
+                            text: 'Time',
+                            color: 'white'
+                        },
+                        ticks: {
+                            color: 'white'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.3)'
                         }
                     },
                     y: {
-                        stacked: true, // Enables stacking
+                        stacked: true,
                         title: {
                             display: true,
-                            text: 'Free Space (TB)' // Y-axis always shows TB
+                            text: 'Free Space (TB)',
+                            color: 'white'
                         },
-                        min: 0 // Force the Y-axis to start at 0
+                        min: 0, // Force the Y-axis to start at 0
+                        ticks: {
+                            color: 'white' // Y-axis tick labels color
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.3)' // Y-axis gridline color (transparent white)
+                        }
                     }
                 }
             }
