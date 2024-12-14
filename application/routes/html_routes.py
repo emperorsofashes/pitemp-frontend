@@ -1,6 +1,7 @@
 import logging
+import os
 
-from flask import Blueprint, current_app, render_template
+from flask import Blueprint, current_app, render_template, request, jsonify, send_from_directory
 
 from application import DisksDao, DISKS_DATABASE_CONFIG_KEY
 from application.constants.app_constants import (
@@ -8,10 +9,12 @@ from application.constants.app_constants import (
 )
 from application.data.beer.dao import BeerDao
 from application.data.dao import ApplicationDao
+from application.data.tube.tube_downloader import TubeDownloader
 
 LOG = logging.getLogger(__name__)
 HTML_BLUEPRINT = Blueprint("routes_html", __name__)
 DEFAULT_DAYS_BACK = 7
+TUBE_DOWNLOADER = TubeDownloader()
 
 
 @HTML_BLUEPRINT.route("/")
@@ -129,6 +132,37 @@ def free_space_graph():
         drive_data=sorted_drive_data,
         drive_letters=sorted_drive_letters
     )
+
+
+@HTML_BLUEPRINT.route("/tube")
+def tube_index():
+    return render_template("tube/tube_index.html",)
+
+
+@HTML_BLUEPRINT.route('/tube/download', methods=['POST'])
+def tube_download():
+    youtube_url = request.form.get('youtube_url')
+    bitrate = request.form.get('bitrate', '128')
+    if not youtube_url:
+        return jsonify({"error": "YouTube URL is required"}), 400
+
+    try:
+        mp3_path = TUBE_DOWNLOADER.download_mp3(url=youtube_url, bitrate=bitrate)
+
+        if mp3_path:
+            # Serve the MP3 file for download
+            directory = os.path.dirname(mp3_path)
+            filename = os.path.basename(mp3_path)
+
+            return send_from_directory(
+                directory=directory,
+                path=filename,
+                as_attachment=True
+            )
+        else:
+            return jsonify({"error": "Failed to download MP3"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 def _get_page(days_back: int):

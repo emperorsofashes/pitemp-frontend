@@ -8,3 +8,4 @@ redis
 fakeredis
 Flask-Compress
 pytz
+yt-dlp

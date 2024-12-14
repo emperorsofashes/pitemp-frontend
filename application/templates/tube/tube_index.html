@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block header %}
+<link rel="shortcut icon" href="{{ url_for('static', filename='tube.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='tube.css') }}">
+<title>Tube Audio Download</title>
+{% endblock %}
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="alert alert-danger">
+    {{ messages[0] }}
+</div>
+{% endif %}
+{% endwith %}
+
+<h1>YouTube to MP3 Downloader</h1>
+<form action="/tube/download" method="POST">
+    <label for="youtube_url">Enter YouTube URL:</label><br>
+    <input type="url" id="youtube_url" class="wide-input" name="youtube_url" required
+           placeholder="https://youtube.com/watch?v=dQw4w9WgXcQ"><br><br>
+    <label for="bitrate">Choose MP3 Quality:</label><br>
+    <select id="bitrate" name="bitrate">
+        <option value="128">128 kbps</option>
+        <option value="64">64 kbps</option>
+    </select><br><br>
+    <button type="submit">Download MP3</button>
+</form>
+
+{% endblock %}
