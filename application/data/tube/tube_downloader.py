@@ -1,19 +1,22 @@
 import hashlib
 import logging
 import os
+import shutil
 import subprocess
 from typing import Optional
 
-
 LOG = logging.getLogger(__name__)
+AUDIO_FORMAT = "mp3"
 
 
 class TubeDownloader:
     def __init__(self, output_dir="/tmp/downloads"):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
+        self.completed = set()
+        self.started = set()
 
-    def _get_unique_subdir(self, url):
+    def get_unique_subdir(self, url) -> str:
         """
         Generate a unique subdirectory based on the hash of the YouTube URL.
         """
@@ -23,23 +26,19 @@ class TubeDownloader:
         return unique_subdir
 
     def _clear_tmp_directory(self) -> None:
-        for root, dirs, files in os.walk(self.output_dir):
-            for file in files:
-                if file.endswith(".mp3"):
-                    file_path = os.path.join(root, file)
-                    try:
-                        os.remove(file_path)
-                        LOG.info(f"Deleted MP3 file: {file_path}")
-                    except Exception as e:
-                        LOG.error(f"Error deleting file {file_path}: {e}")
+        self.completed.clear()
+        for item in os.listdir(self.output_dir):
+            item_path = os.path.join(self.output_dir, item)
+            if os.path.isdir(item_path):  # Check if it's a directory
+                shutil.rmtree(item_path)  # Recursively delete the directory
 
-    def download_mp3(self, url: str, bitrate: str, audio_format: str = "mp3") -> Optional[str]:
-        unique_dir = self._get_unique_subdir(url)
+    def download_mp3(self, url: str, bitrate: str):
+        unique_dir = self.get_unique_subdir(url)
         output_template = os.path.join(unique_dir, "%(title)s.%(ext)s")
         command = [
             "yt-dlp",
             "--extract-audio",
-            "--audio-format", audio_format,
+            "--audio-format", AUDIO_FORMAT,
             "--audio-quality", f"{bitrate}K",
             "--output", output_template,
             url,
@@ -50,14 +49,20 @@ class TubeDownloader:
 
         try:
             subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.completed.add(unique_dir)
             LOG.info(f"Download for {url} and conversion completed successfully.")
-
-            # Find the file in the output directory
-            for file in os.listdir(unique_dir):
-                if file.endswith(f".{audio_format}"):
-                    return os.path.join(unique_dir, file)
         except subprocess.CalledProcessError as e:
             LOG.exception("An error occurred during download or conversion")
             raise
 
+    def get_mp3_if_ready(self, unique_dir: str) -> Optional[str]:
+        if unique_dir not in self.started:
+            raise ValueError("ID not found")
+
+        if unique_dir not in self.completed:
+            return None
+
+        for file in os.listdir(unique_dir):
+            if file.endswith(f".{AUDIO_FORMAT}"):
+                return os.path.join(unique_dir, file)
         return None
