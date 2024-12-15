@@ -52,7 +52,8 @@ class TubeDownloader:
             self.completed.add(unique_dir)
             LOG.info(f"Download for {url} and conversion completed successfully.")
         except subprocess.CalledProcessError as e:
-            LOG.exception("An error occurred during download or conversion")
+            LOG.error(f"yt-dlp command failed with exit code {e.returncode}")
+            LOG.error(f"Error output: {e.stderr.decode('utf-8')}")
             raise
 
     def get_mp3_if_ready(self, unique_dir: str) -> Optional[str]:
