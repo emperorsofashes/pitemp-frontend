@@ -1,10 +1,5 @@
 FROM python:3.11-slim
 
-# Install ffmpeg
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
-
 # Set the working directory
 WORKDIR /app
 
@@ -12,6 +7,7 @@ WORKDIR /app
 COPY . /app
 
 # Install required Python packages
+# Use --no-cache-dir to reduce the size of the layer since we only need to install once
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Run the application

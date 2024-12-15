@@ -135,54 +135,6 @@ def free_space_graph():
         drive_letters=sorted_drive_letters
     )
 
-
-@HTML_BLUEPRINT.route("/tube")
-def tube_index():
-    return render_template("tube/tube_index.html")
-
-
-@HTML_BLUEPRINT.route('/tube/download/<string:encoded_id>')
-def tube_download_id(encoded_id: str):
-    if not encoded_id:
-        return jsonify({"error": "No video ID"}), 500
-
-    decoded_id = base64.b64decode(encoded_id).decode('utf-8')
-
-    try:
-        mp3_path = TUBE_DOWNLOADER.get_mp3_if_ready(decoded_id)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 500
-
-    if mp3_path:
-        directory = os.path.dirname(mp3_path)
-        filename = os.path.basename(mp3_path)
-        return send_from_directory(
-            directory=directory,
-            path=filename,
-            as_attachment=True
-        )
-    else:
-        return render_template("tube/not_ready.html")
-
-
-@HTML_BLUEPRINT.route('/tube/download', methods=['POST'])
-def tube_download():
-    youtube_url = request.form.get('youtube_url')
-    bitrate = request.form.get('bitrate', '128')
-    if not youtube_url:
-        return jsonify({"error": "YouTube URL is required"}), 400
-
-    try:
-        unique_subdir = TUBE_DOWNLOADER.get_unique_subdir(youtube_url)
-        TUBE_DOWNLOADER.started.clear()
-        TUBE_DOWNLOADER.started.add(unique_subdir)
-        encoded_string = base64.b64encode(unique_subdir.encode("UTF-8")).decode('utf-8')
-        threading.Thread(target=TUBE_DOWNLOADER.download_mp3, args=(youtube_url, bitrate)).start()
-        return redirect(f"/tube/download/{encoded_string}")
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
 def _get_page(days_back: int):
     dao = _get_dao()
 
