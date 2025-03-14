@@ -13,72 +13,85 @@
 </div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        // Register the datalabels plugin with Chart.js (for Chart.js v3+)
-        Chart.register(ChartDataLabels);
-        Chart.defaults.font.size = 16;
+document.addEventListener("DOMContentLoaded", function () {
+    Chart.register(ChartDataLabels);
+    Chart.defaults.font.size = 16;
 
-        const ctx = document.getElementById('freeSpaceChart').getContext('2d');
+    const ctx = document.getElementById('freeSpaceChart').getContext('2d');
 
-        // Data provided by Jinja2
-        // Format timeLabels to show only the date (YYYY-MM-DD)
-        const formattedTimeLabels = {{ time_labels | tojson }}.map(timestamp => {
-            const date = new Date(timestamp); // Convert timestamp to Date object
-            return date.toISOString().split('T')[0]; // Extract only the date part
+    let timeLabels = {{ time_labels | tojson }};
+    let driveData = {{ drive_data | tojson }};
+    let driveNames = {{ drive_letters | tojson }};
+
+    function downsampleData(labels, datasets, maxPoints) {
+        if (labels.length <= maxPoints) return { labels, datasets };
+
+        let step = Math.ceil(labels.length / maxPoints);
+        let newLabels = [];
+        let newDatasets = [];
+
+        // Always include the first label (oldest)
+        newLabels.push(labels[0]);
+        datasets.forEach((data, index) => {
+            newDatasets[index] = [data[0]];
         });
-        const driveData = {{ drive_data | tojson }};
-        const driveNames = {{ drive_letters | tojson }};
-        const backgroundColors = [
-            'rgba(0, 255, 0, 0.5)', // Green (changed from teal)
-            'rgba(255, 99, 132, 0.5)', // Red
-            'rgba(54, 162, 235, 0.5)', // Blue
-            'rgba(255, 206, 86, 0.5)', // Yellow
-            'rgba(153, 102, 255, 0.5)', // Purple
-            'rgba(255, 159, 64, 0.5)',  // Orange
-            'rgba(255, 99, 255, 0.5)',  // Pink
-            'rgba(128, 128, 128, 0.5)'  // Gray
-        ];
-        const borderColors = [
-            'rgba(0, 255, 0, 1)', // Green (changed from teal)
-            'rgba(255, 99, 132, 1)', // Red
-            'rgba(54, 162, 235, 1)', // Blue
-            'rgba(255, 206, 86, 1)', // Yellow
-            'rgba(153, 102, 255, 1)', // Purple
-            'rgba(255, 159, 64, 1)',  // Orange
-            'rgba(255, 99, 255, 1)',  // Pink
-            'rgba(128, 128, 128, 1)'  // Gray
-        ];
 
-        const datasets = driveData.map((data, index) => ({
+        for (let i = step; i < labels.length - step; i += step) {
+            newLabels.push(labels[i]);
+            datasets.forEach((data, index) => {
+                newDatasets[index].push(data[i]);
+            });
+        }
+
+        // Always include the first label (oldest)
+        newLabels.push(labels[labels.length - 1]);
+        datasets.forEach((data, index) => {
+            newDatasets[index].push(data[data.length - 1]);
+        });
+
+        return { labels: newLabels, datasets: newDatasets };
+    }
+
+    function createChart() {
+        const pointGranularity = 100;
+        let maxPoints = Math.floor(window.innerWidth / pointGranularity);
+        let { labels, datasets } = downsampleData(timeLabels, driveData, maxPoints);
+
+        let formattedTimeLabels = labels.map(timestamp => {
+            const date = new Date(timestamp);
+            return date.toISOString().split('T')[0];
+        });
+
+        let backgroundColors = [
+            'rgba(0, 255, 0, 0.5)', 'rgba(255, 99, 132, 0.5)',
+            'rgba(54, 162, 235, 0.5)', 'rgba(255, 206, 86, 0.5)',
+            'rgba(153, 102, 255, 0.5)', 'rgba(255, 159, 64, 0.5)',
+            'rgba(255, 99, 255, 0.5)', 'rgba(128, 128, 128, 0.5)'
+        ];
+        let borderColors = backgroundColors.map(c => c.replace('0.5', '1'));
+
+        let chartData = datasets.map((data, index) => ({
             label: driveNames[index],
-            data: data.map(value => value / (1024 ** 4)), // Convert to TB for consistent Y-axis
+            data: data.map(value => value / (1024 ** 4)), // Convert to TB
             backgroundColor: backgroundColors[index % backgroundColors.length],
             borderColor: borderColors[index % borderColors.length],
             borderWidth: 1,
             fill: true
         }));
 
-        new Chart(ctx, {
-            type: 'line', // Line chart for stacked area visualization
-            data: {
-                labels: formattedTimeLabels,
-                datasets: datasets
-            },
+        return new Chart(ctx, {
+            type: 'line',
+            data: { labels: formattedTimeLabels, datasets: chartData },
             options: {
                 plugins: {
-                    title: {
-                        display: true,
-                        text: 'Drive Letters',
-                        color: 'white',
-                    },
+                    title: { display: true, text: 'Drive Free Space', color: 'white' },
                     tooltip: {
-                        mode: 'index',
-                        intersect: false,
+                        mode: 'index', intersect: false,
                         callbacks: {
                             label: function(tooltipItem) {
-                                let value = tooltipItem.raw; // This will be in TB
+                                let value = tooltipItem.raw;
                                 let unit = 'TB';
-                                if (value < 1) { // Convert to GB
+                                if (value < 1) {
                                     value *= 1024;
                                     unit = 'GB';
                                 }
@@ -86,21 +99,17 @@
                             }
                         }
                     },
-                    legend: {
-                        labels: {
-                            color: 'white'
-                        }
-                    },
+                    legend: { labels: { color: 'white' } },
                     datalabels: {
                         display: true,
-                        align: 'top',  // Place the label at the top of the point
-                        color: 'white',  // Text color for the label (changed to white)
+                        align: 'top',
+                        color: 'white',
                         font: {
                             weight: 'bold',
-                            size: 12 // Override default for labels to be smaller
+                            size: 12
                         },
                         formatter: function(value, context) {
-                            // Check if this is the topmost dataset (the last in the stack) at this point
+                            // Check if this is the topmost dataset (the last in the stack)
                             const isTopDataset = context.datasetIndex === context.chart.data.datasets.length - 1;
 
                             if (!isTopDataset) {
@@ -122,37 +131,29 @@
                 maintainAspectRatio: false,
                 scales: {
                     x: {
-                        title: {
-                            display: true,
-                            text: 'Time',
-                            color: 'white'
-                        },
-                        ticks: {
-                            color: 'white'
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.3)'
-                        }
+                        title: { display: true, text: 'Time', color: 'white' },
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255, 255, 255, 0.3)' }
                     },
                     y: {
                         stacked: true,
-                        title: {
-                            display: true,
-                            text: 'Free Space (TB)',
-                            color: 'white'
-                        },
-                        min: 0, // Force the Y-axis to start at 0
-                        ticks: {
-                            color: 'white' // Y-axis tick labels color
-                        },
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.3)' // Y-axis gridline color (transparent white)
-                        }
+                        title: { display: true, text: 'Free Space (TB)', color: 'white' },
+                        min: 0,
+                        ticks: { color: 'white' },
+                        grid: { color: 'rgba(255, 255, 255, 0.3)' }
                     }
                 }
             }
         });
+    }
+
+    let chart = createChart();
+
+    window.addEventListener('resize', function () {
+        chart.destroy();
+        chart = createChart();
     });
+});
 </script>
 
 {% endblock %}
