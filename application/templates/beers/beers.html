@@ -63,7 +63,7 @@
                 <td>{% if beer.rating != -1 %}{{ beer.rating }}{% else %}{% endif %}</td>
                 <td>{{ beer.style }}</td>
                 <td>{% if beer.abv != -1 %}{{ beer.abv }}{% else %}{% endif %}</td>
-                <td>{{ beer.first_checkin.strftime('%Y-%m-%d') }}</td>
+                <td data-full-date="{{ beer.first_checkin.isoformat() }}">{{ beer.first_checkin.strftime('%Y-%m-%d') }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -91,8 +91,10 @@
                     const numA = cellA === '' ? -1 : parseFloat(cellA); // Treat empty cells as -1
                     const numB = cellB === '' ? -1 : parseFloat(cellB);
                     comparison = numA - numB;
-                } else if (columnIndex === 6) { // Date column
-                    comparison = new Date(cellA) - new Date(cellB);
+                } else if (columnIndex === 7) { // Date column
+                    const dateA = new Date(rowA.children[columnIndex].getAttribute('data-full-date'));
+                    const dateB = new Date(rowB.children[columnIndex].getAttribute('data-full-date'));
+                    comparison = dateA - dateB;
                 } else { // Text columns
                     comparison = cellA.localeCompare(cellB);
                 }
