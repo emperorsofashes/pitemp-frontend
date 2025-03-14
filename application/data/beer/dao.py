@@ -6,12 +6,17 @@ from statistics import median
 
 import fakeredis
 import redis
-from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 
-from application.constants.beer_constants import DB_NAME, REDIS_VERSION, BEERS_COLLECTION_NAME, REDIS_CACHE_TTL, \
-    BREWERIES_COLLECTION_NAME, COUNTRIES
+from application.constants.beer_constants import (
+    DB_NAME,
+    REDIS_VERSION,
+    BEERS_COLLECTION_NAME,
+    REDIS_CACHE_TTL,
+    BREWERIES_COLLECTION_NAME,
+    COUNTRIES,
+)
 from application.data.beer.beer import Beer
 from application.data.beer.brewery import Brewery
 from application.data.beer.country import Country
@@ -70,7 +75,7 @@ class BeerDao:
                 style=beer_document["style"],
                 abv=beer_document["abv"],
                 first_checkin=beer_document["first_checkin"],
-                country=brewery_id_to_country.get(brewery_id, "")
+                country=brewery_id_to_country.get(brewery_id, ""),
             )
             beers.append(beer)
 
@@ -108,7 +113,7 @@ class BeerDao:
                 num_checkins_with_ratings=len(filtered_ratings),
                 avg_rating=avg_rating,
                 country=self._get_country(full_location),
-                first_checkin=first_checkin
+                first_checkin=first_checkin,
             )
             breweries.append(brewery)
 
@@ -146,15 +151,23 @@ class BeerDao:
             num_rated_checkins = sum(brewery.num_checkins_with_ratings for brewery in country_breweries)
             if num_rated_checkins > 0:
                 total_rating = sum(
-                    brewery.avg_rating * brewery.num_checkins_with_ratings for brewery in country_breweries)
+                    brewery.avg_rating * brewery.num_checkins_with_ratings for brewery in country_breweries
+                )
                 avg_rating = total_rating / num_rated_checkins
             else:
                 avg_rating = -1
 
             first_checkin = min(b.first_checkin for b in country_breweries)
 
-            countries.append(Country(name=country, num_breweries=num_breweries, num_checkins=num_checkins,
-                                     avg_rating=avg_rating, first_checkin=first_checkin))
+            countries.append(
+                Country(
+                    name=country,
+                    num_breweries=num_breweries,
+                    num_checkins=num_checkins,
+                    avg_rating=avg_rating,
+                    first_checkin=first_checkin,
+                )
+            )
 
         serialized_data = pickle.dumps(countries)
         self.cache.set("countries_list", serialized_data, ex=REDIS_CACHE_TTL)
@@ -193,8 +206,15 @@ class BeerDao:
             min_rating = min(filtered_ratings) if filtered_ratings else -1
             max_rating = max(filtered_ratings) if filtered_ratings else -1
             first_checkin = min([b.first_checkin for b in beers])
-            style = Style(name=style_name, num_checkins=num_checkins, min_rating=min_rating, max_rating=max_rating,
-                          avg_rating=avg_rating, median_rating=median_rating, first_checkin=first_checkin)
+            style = Style(
+                name=style_name,
+                num_checkins=num_checkins,
+                min_rating=min_rating,
+                max_rating=max_rating,
+                avg_rating=avg_rating,
+                median_rating=median_rating,
+                first_checkin=first_checkin,
+            )
             styles.append(style)
 
         serialized_data = pickle.dumps(styles)

@@ -1,22 +1,19 @@
-import base64
 import logging
-import os
-import threading
 
-from flask import Blueprint, current_app, render_template, request, jsonify, send_from_directory, redirect
+from flask import Blueprint, current_app, render_template
 
 from application import DisksDao, DISKS_DATABASE_CONFIG_KEY
 from application.constants.app_constants import (
-    DATABASE_CONFIG_KEY, BEERS_DATABASE_CONFIG_KEY, DATETIME_FORMAT_STRING,
+    DATABASE_CONFIG_KEY,
+    BEERS_DATABASE_CONFIG_KEY,
+    DATETIME_FORMAT_STRING,
 )
 from application.data.beer.dao import BeerDao
 from application.data.dao import ApplicationDao
-from application.data.tube.tube_downloader import TubeDownloader
 
 LOG = logging.getLogger(__name__)
 HTML_BLUEPRINT = Blueprint("routes_html", __name__)
 DEFAULT_DAYS_BACK = 7
-TUBE_DOWNLOADER = TubeDownloader()
 
 
 @HTML_BLUEPRINT.route("/")
@@ -81,8 +78,14 @@ def disks_snapshot():
     total_free = sum(snapshot.free_bytes for snapshot in drive_snapshot.values())
     total_used = sum(snapshot.used_bytes for snapshot in drive_snapshot.values())
     total_percent_used = (total_used / total_capacity) * 100 if total_capacity > 0 else 0.0
-    return render_template("disks/snapshot.html", drives=drive_snapshot, total_capacity=total_capacity,
-                           total_free=total_free, total_used=total_used, total_percent_used=total_percent_used)
+    return render_template(
+        "disks/snapshot.html",
+        drives=drive_snapshot,
+        total_capacity=total_capacity,
+        total_free=total_free,
+        total_used=total_used,
+        total_percent_used=total_percent_used,
+    )
 
 
 @HTML_BLUEPRINT.route("/disks/overview")
@@ -94,8 +97,14 @@ def disks_overview():
     total_free = sum(snapshot.free_bytes for snapshot in drive_snapshot.values())
     total_used = sum(snapshot.used_bytes for snapshot in drive_snapshot.values())
     total_percent_used = (total_used / total_capacity) * 100 if total_capacity > 0 else 0.0
-    return render_template("disks/overview.html", drives=drive_snapshot, total_capacity=total_capacity,
-                           total_free=total_free, total_used=total_used, total_percent_used=total_percent_used)
+    return render_template(
+        "disks/overview.html",
+        drives=drive_snapshot,
+        total_capacity=total_capacity,
+        total_free=total_free,
+        total_used=total_used,
+        total_percent_used=total_percent_used,
+    )
 
 
 @HTML_BLUEPRINT.route("/disks/free_space")
@@ -132,8 +141,9 @@ def free_space_graph():
         "disks/disks_free_space.html",
         time_labels=time_labels,
         drive_data=sorted_drive_data,
-        drive_letters=sorted_drive_letters
+        drive_letters=sorted_drive_letters,
     )
+
 
 def _get_page(days_back: int):
     dao = _get_dao()

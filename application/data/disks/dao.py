@@ -51,7 +51,7 @@ class DisksDao:
             return pickle.loads(serialized_drives_list)
 
         # Get documents from oldest to newest
-        documents = self.collection.find().sort('timestamp', 1)
+        documents = self.collection.find().sort("timestamp", 1)
 
         drive_letter_to_data = defaultdict(list)
         for document in documents:

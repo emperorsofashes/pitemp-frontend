@@ -17,7 +17,8 @@ from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
     REDIS_VERSION,
     DATE_FORMAT_STRING,
-    ONE_DAY_IN_SECONDS, DEFAULT_TIMEZONE,
+    ONE_DAY_IN_SECONDS,
+    DEFAULT_TIMEZONE,
 )
 from application.data.temperature_data_set import TemperatureDataSet
 from application.data.temperatures import Temperatures
@@ -35,7 +36,7 @@ class ApplicationDao:
         else:
             self.cache = cache
 
-        self.client =  client
+        self.client = client
         # If no database provided, connect to one
         if database is None:
             database: Database = self.client[DATABASE_NAME]
