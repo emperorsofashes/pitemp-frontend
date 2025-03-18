@@ -2,8 +2,6 @@ Flask
 waitress
 pymongo
 dnspython
-flask_accept
-bcrypt
 valkey[libvalkey]
 fakeredis
 Flask-Compress
