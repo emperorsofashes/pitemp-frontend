@@ -4,7 +4,7 @@ pymongo
 dnspython
 flask_accept
 bcrypt
-redis
+valkey[libvalkey]
 fakeredis
 Flask-Compress
 pytz

@@ -1,11 +1,10 @@
 import logging
 import os
 
-import redis
+import valkey
 from flask import Flask
 from flask_compress import Compress
 from pymongo import MongoClient
-from redis import Redis
 
 from application.constants.app_constants import (
     DATABASE_CONFIG_KEY,
@@ -45,11 +44,11 @@ def create_flask_app() -> Flask:
     # Set custom JSON encoder to handle MongoDB ObjectID
     app.json_encoder = CustomJsonEncoder
 
-    redis_url = os.environ.get("REDIS_DATA_URL")
-    if redis_url:
-        cache: Redis = redis.Redis.from_url(redis_url)
+    cache_url = os.environ.get("REDIS_DATA_URL")
+    if cache_url:
+        cache = valkey.Valkey.from_url(cache_url)
         cache.ping()
-        LOG.info("Using Redis cache for data")
+        LOG.info("Using persistent cache for data")
     else:
         cache = None
 

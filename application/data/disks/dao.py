@@ -5,26 +5,25 @@ from collections import defaultdict
 from datetime import timedelta
 
 import fakeredis
-import redis
+import valkey
 from pymongo.synchronous.collection import Collection
 from pymongo.synchronous.database import Database
 
-from application.constants.app_constants import REDIS_VERSION
 from application.data.disks.drive import Drive
 
 LOG = logging.getLogger(__name__)
 
 DB_NAME = "disks"
 COLLECTION_NAME = "space"
-REDIS_CACHE_TTL = timedelta(days=1)
+DISKS_CACHE_TTL = timedelta(days=1)
 DRIVES_LIST_CACHE_KEY = "drives_list"
 
 
 class DisksDao:
-    def __init__(self, client, database: Database = None, cache: redis.Redis = None):
+    def __init__(self, client, database: Database = None, cache: valkey.Valkey = None):
         # If no cache is given, spin up a fake one
         if cache is None:
-            self.cache = fakeredis.FakeStrictRedis(version=REDIS_VERSION)
+            self.cache = fakeredis.FakeValkey()
         else:
             self.cache = cache
 
@@ -67,6 +66,6 @@ class DisksDao:
             drive_letter_to_data[drive.drive_letter].append(drive)
 
         serialized_data = pickle.dumps(drive_letter_to_data)
-        self.cache.set(DRIVES_LIST_CACHE_KEY, serialized_data, ex=REDIS_CACHE_TTL)
+        self.cache.set(DRIVES_LIST_CACHE_KEY, serialized_data, ex=DISKS_CACHE_TTL)
 
         return drive_letter_to_data

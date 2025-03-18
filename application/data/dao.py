@@ -8,14 +8,13 @@ from typing import List, Optional
 
 import fakeredis
 import pytz
-import redis
+import valkey
 from pymongo.collection import Collection
 from pymongo.database import Database
 
 from application import CustomJsonEncoder
 from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
-    REDIS_VERSION,
     DATE_FORMAT_STRING,
     ONE_DAY_IN_SECONDS,
     DEFAULT_TIMEZONE,
@@ -29,10 +28,10 @@ LOG = logging.getLogger(__name__)
 
 
 class ApplicationDao:
-    def __init__(self, client, database: Database = None, cache: redis.Redis = None):
+    def __init__(self, client, database: Database = None, cache: valkey.Valkey = None):
         # If no cache is given, spin up a fake one
         if cache is None:
-            self.cache = fakeredis.FakeStrictRedis(version=REDIS_VERSION)
+            self.cache = fakeredis.FakeValkey()
         else:
             self.cache = cache
 

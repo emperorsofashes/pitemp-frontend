@@ -5,15 +5,14 @@ from collections import defaultdict
 from statistics import median
 
 import fakeredis
-import redis
+import valkey
 from pymongo.collection import Collection
 from pymongo.database import Database
 
 from application.constants.beer_constants import (
     DB_NAME,
-    REDIS_VERSION,
     BEERS_COLLECTION_NAME,
-    REDIS_CACHE_TTL,
+    BEER_CACHE_TTL,
     BREWERIES_COLLECTION_NAME,
     COUNTRIES,
 )
@@ -26,10 +25,10 @@ LOG = logging.getLogger(__name__)
 
 
 class BeerDao:
-    def __init__(self, client, database: Database = None, cache: redis.Redis = None):
+    def __init__(self, client, database: Database = None, cache: valkey.Valkey = None):
         # If no cache is given, spin up a fake one
         if cache is None:
-            self.cache = fakeredis.FakeStrictRedis(version=REDIS_VERSION)
+            self.cache = fakeredis.FakeValkey()
         else:
             self.cache = cache
 
@@ -80,7 +79,7 @@ class BeerDao:
             beers.append(beer)
 
         serialized_data = pickle.dumps(beers)
-        self.cache.set("beer_list", serialized_data, ex=REDIS_CACHE_TTL)
+        self.cache.set("beer_list", serialized_data, ex=BEER_CACHE_TTL)
 
         return beers
 
@@ -118,7 +117,7 @@ class BeerDao:
             breweries.append(brewery)
 
         serialized_data = pickle.dumps(breweries)
-        self.cache.set("breweries_list", serialized_data, ex=REDIS_CACHE_TTL)
+        self.cache.set("breweries_list", serialized_data, ex=BEER_CACHE_TTL)
 
         return breweries
 
@@ -170,7 +169,7 @@ class BeerDao:
             )
 
         serialized_data = pickle.dumps(countries)
-        self.cache.set("countries_list", serialized_data, ex=REDIS_CACHE_TTL)
+        self.cache.set("countries_list", serialized_data, ex=BEER_CACHE_TTL)
 
         return countries
 
@@ -218,6 +217,6 @@ class BeerDao:
             styles.append(style)
 
         serialized_data = pickle.dumps(styles)
-        self.cache.set("styles_list", serialized_data, ex=REDIS_CACHE_TTL)
+        self.cache.set("styles_list", serialized_data, ex=BEER_CACHE_TTL)
 
         return styles
