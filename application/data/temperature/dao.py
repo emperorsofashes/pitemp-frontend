@@ -9,6 +9,7 @@ from typing import List, Optional
 import fakeredis
 import pytz
 import valkey
+from pymongo import DESCENDING, ASCENDING
 from pymongo.collection import Collection
 from pymongo.database import Database
 
@@ -80,6 +81,11 @@ class ApplicationDao:
     def _calculate_day_temperatures(
         self, sensor_id: str, date: datetime.datetime, periods_per_day: int
     ) -> Optional[Temperatures]:
+        # We cannot show every data point for every view. Showing 90 days worth of data would be incredibly slow.
+        # This algorithm works by diving a single day into periods and will only return the lowest and highest
+        # temperature recorded for each period. This preserves the peaks and valleys for the most useful information.
+        # This is a process called 'decimation'.
+
         # The first instant and last instant of the calendar date
         min_date = datetime.datetime.combine(date, datetime.time.min).replace(tzinfo=pytz.timezone(DEFAULT_TIMEZONE))
         max_date = datetime.datetime.combine(date, datetime.time.max).replace(tzinfo=pytz.timezone(DEFAULT_TIMEZONE))
@@ -88,8 +94,8 @@ class ApplicationDao:
         documents = self.pitemp_collection.find(
             filter={"timestamp": {"$gte": min_date, "$lte": max_date}, "sensorId": sensor_id}
         )
-        # We need the dates in order for the algorithm to work
-        documents.sort({"timestamp": 1})
+        # We need the dates in order from oldest to newest for the algorithm to work
+        documents.sort({"timestamp": ASCENDING})
 
         dates: List[datetime] = []
         temperatures: List[float] = []
@@ -199,6 +205,16 @@ class ApplicationDao:
         for i in range(len(dates)):
             data.append({"x": dates[i], "y": temperatures[i]})
 
+        # Make sure we get the most recent data point regardless of decimation
+        most_recent_document = self.pitemp_collection.find_one(
+            filter={"sensorId": sensor_id}, sort=[("timestamp", DESCENDING)]
+        )
+        most_recent_timestamp = most_recent_document["timestamp"].replace(tzinfo=pytz.UTC)
+        most_recent_temperature = most_recent_document["temp_f"]
+        if data[-1]["x"] != most_recent_timestamp:
+            data.append({"x": most_recent_timestamp.strftime(DATETIME_FORMAT_STRING), "y": most_recent_temperature})
+
+        # Defaults in case we got no data
         current_temp = temperatures[-1] if temperatures else -1
         min_temp = min(temperatures) if temperatures else -1
         max_temp = max(temperatures) if temperatures else -1
