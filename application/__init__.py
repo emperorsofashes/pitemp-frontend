@@ -13,7 +13,7 @@ from application.constants.app_constants import (
 )
 from application.data.beer.dao import BeerDao
 from application.data.custom_json_encoder import CustomJsonEncoder
-from application.data.dao import ApplicationDao
+from application.data.temperature.dao import ApplicationDao
 from application.data.disks.dao import DisksDao
 from application.routes.html_routes import HTML_BLUEPRINT
 

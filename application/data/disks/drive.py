@@ -1,9 +1,10 @@
+import datetime
 from dataclasses import dataclass
 
 
 @dataclass
 class Drive:
-    timestamp: str
+    timestamp: datetime.datetime
     drive_letter: str
     capacity_bytes: int
     free_bytes: int

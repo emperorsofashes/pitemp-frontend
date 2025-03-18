@@ -9,7 +9,7 @@ from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
 )
 from application.data.beer.dao import BeerDao
-from application.data.dao import ApplicationDao
+from application.data.temperature.dao import ApplicationDao
 
 LOG = logging.getLogger(__name__)
 HTML_BLUEPRINT = Blueprint("routes_html", __name__)

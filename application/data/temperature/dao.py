@@ -19,8 +19,8 @@ from application.constants.app_constants import (
     ONE_DAY_IN_SECONDS,
     DEFAULT_TIMEZONE,
 )
-from application.data.temperature_data_set import TemperatureDataSet
-from application.data.temperatures import Temperatures
+from application.data.temperature.temperature_data_set import TemperatureDataSet
+from application.data.temperature.temperatures import Temperatures
 
 DATABASE_NAME = "sensors"
 

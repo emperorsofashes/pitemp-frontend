@@ -7,9 +7,6 @@ BEERS_COLLECTION_NAME = "beers"
 BREWERIES_COLLECTION_NAME = "breweries"
 BEER_CACHE_TTL = timedelta(hours=1)
 
-DATE_FORMAT_STRING = "%Y-%m-%d"
-DATETIME_FORMAT_STRING = "%Y-%m-%dT%H:%M:%S"
-
 __RAW_COUNTRIES = {
     "Afghanistan",
     "Albania",
