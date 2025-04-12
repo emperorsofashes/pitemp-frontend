@@ -4,8 +4,10 @@ DATABASE_CONFIG_KEY = "db_config_key"
 
 DB_NAME = "untappd"
 BEERS_COLLECTION_NAME = "beers"
+BEERS_ROWDY_COLLECTION_NAME = "beers_rowdy"
 BREWERIES_COLLECTION_NAME = "breweries"
 BEER_CACHE_TTL = timedelta(hours=1)
+ROWDY_USERNAME = "rowdy"
 
 __RAW_COUNTRIES = {
     "Afghanistan",

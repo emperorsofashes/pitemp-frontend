@@ -3,6 +3,7 @@ import os
 import pickle
 from collections import defaultdict
 from statistics import median
+from typing import Optional
 
 import fakeredis
 import valkey
@@ -14,7 +15,7 @@ from application.constants.beer_constants import (
     BEERS_COLLECTION_NAME,
     BEER_CACHE_TTL,
     BREWERIES_COLLECTION_NAME,
-    COUNTRIES,
+    COUNTRIES, BEERS_ROWDY_COLLECTION_NAME, ROWDY_USERNAME,
 )
 from application.data.beer.beer import Beer
 from application.data.beer.brewery import Brewery
@@ -45,12 +46,18 @@ class BeerDao:
         # Set up database and collection variables
         self.database = database
         self.beers_collection: Collection = self.database[BEERS_COLLECTION_NAME]
+        self.beers_rowdy_collection: Collection = self.database[BEERS_ROWDY_COLLECTION_NAME]
         self.breweries_collection: Collection = self.database[BREWERIES_COLLECTION_NAME]
 
         LOG.info(f"Database collections: {self.database.list_collection_names()}")
 
-    def get_beers(self) -> list[Beer]:
-        serialized_beer_list = self.cache.get("beer_list")
+    def get_beers(self, username: Optional[str] = None) -> list[Beer]:
+        if username:
+            cache_key = f"beer_list_{username}"
+        else:
+            cache_key = "beer_list"
+
+        serialized_beer_list = self.cache.get(cache_key)
         if serialized_beer_list:
             # noinspection PyTypeChecker
             return pickle.loads(serialized_beer_list)
@@ -61,7 +68,14 @@ class BeerDao:
             brewery_id = brewery_document["id"]
             brewery_id_to_country[brewery_id] = self._get_country(brewery_document["full_location"])
 
-        beer_documents = self.beers_collection.find()
+        if username is None:
+            collection = self.beers_collection
+        elif username == ROWDY_USERNAME:
+            collection = self.beers_rowdy_collection
+        else:
+            raise ValueError("Unknown username")
+
+        beer_documents = collection.find()
         beers = []
         for beer_document in beer_documents:
             brewery_id = beer_document["brewery_id"]
@@ -79,7 +93,7 @@ class BeerDao:
             beers.append(beer)
 
         serialized_data = pickle.dumps(beers)
-        self.cache.set("beer_list", serialized_data, ex=BEER_CACHE_TTL)
+        self.cache.set(cache_key, serialized_data, ex=BEER_CACHE_TTL)
 
         return beers
 
@@ -97,7 +111,10 @@ class BeerDao:
             full_location = document["full_location"]
             brewery_id = document["id"]
 
-            brewery_beers = brewery_id_to_beers[brewery_id]
+            brewery_beers = brewery_id_to_beers.get(brewery_id, None)
+            if brewery_beers is None:
+                continue
+
             ratings = [b.rating for b in brewery_beers]
             filtered_ratings = [value for value in ratings if value != -1.0]
             avg_rating = sum(filtered_ratings) / len(filtered_ratings) if filtered_ratings else -1

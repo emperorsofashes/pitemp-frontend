@@ -8,6 +8,7 @@ from application.constants.app_constants import (
     BEERS_DATABASE_CONFIG_KEY,
     DATETIME_FORMAT_STRING,
 )
+from application.constants.beer_constants import ROWDY_USERNAME
 from application.data.beer.dao import BeerDao
 from application.data.temperature.dao import ApplicationDao
 
@@ -48,6 +49,12 @@ def beers_page():
     beers = _get_beers_dao().get_beers()
 
     return render_template("beers/beers.html", beers=beers)
+
+@HTML_BLUEPRINT.route("/beers/beers_rowdy")
+def beers_rowdy_page():
+    rowdy_beers = _get_beers_dao().get_beers(username=ROWDY_USERNAME)
+
+    return render_template("beers/beers.html", beers=rowdy_beers, username=ROWDY_USERNAME.title())
 
 
 @HTML_BLUEPRINT.route("/beers/countries")
