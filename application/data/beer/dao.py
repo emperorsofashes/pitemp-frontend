@@ -15,11 +15,15 @@ from application.constants.beer_constants import (
     BEERS_COLLECTION_NAME,
     BEER_CACHE_TTL,
     BREWERIES_COLLECTION_NAME,
-    COUNTRIES, BEERS_ROWDY_COLLECTION_NAME, ROWDY_USERNAME,
+    COUNTRIES,
+    BEERS_ROWDY_COLLECTION_NAME,
+    ROWDY_USERNAME,
+    STYLES,
 )
 from application.data.beer.beer import Beer
 from application.data.beer.brewery import Brewery
 from application.data.beer.country import Country
+from application.data.beer.missing_style import MissingStyle
 from application.data.beer.style import Style
 
 LOG = logging.getLogger(__name__)
@@ -237,3 +241,32 @@ class BeerDao:
         self.cache.set("styles_list", serialized_data, ex=BEER_CACHE_TTL)
 
         return styles
+
+    def get_missing_styles(self) -> list[MissingStyle]:
+        cache_key = "missing_styles"
+        serialized_styles_list = self.cache.get(cache_key)
+        if serialized_styles_list:
+            # noinspection PyTypeChecker
+            return pickle.loads(serialized_styles_list)
+
+        had_styles_main = set(self.beers_collection.distinct("style"))
+        had_styles_rowdy = set(self.beers_rowdy_collection.distinct("style"))
+
+        missing_styles = []
+        for style_name in STYLES:
+            is_main_missing = True if style_name not in had_styles_main else False
+            is_rowdy_missing = True if style_name not in had_styles_rowdy else False
+
+            if is_main_missing or is_rowdy_missing:
+                missing_styles.append(
+                    MissingStyle(
+                        style_name=style_name,
+                        is_main_missing=is_main_missing,
+                        is_rowdy_missing=is_rowdy_missing,
+                    )
+                )
+
+        serialized_data = pickle.dumps(missing_styles)
+        self.cache.set(cache_key, serialized_data, ex=BEER_CACHE_TTL)
+
+        return missing_styles

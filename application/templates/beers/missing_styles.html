@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block header %}
+    {% include "beers/header.html" %}
+{% endblock %}
+
+{% block content %}
+
+<h1 class="text-center">Missing Beer Styles</h1>
+<p class="text-center">
+    Styles that at least one person hasn't had.<br>
+    ✅ means the person has had the style. ❌ means the person has not yet had the style.
+</p>
+
+<table id="missingStyleTable">
+    <thead>
+        <tr>
+            <th class="sortable" onclick="sortTable(0)">
+                Style
+                <span class="sort-icon none" id="icon-0"></span>
+            </th>
+            <th class="sortable" onclick="sortTable(1)">
+                🐉 Ty
+                <span class="sort-icon none" id="icon-1"></span>
+            </th>
+            <th class="sortable" onclick="sortTable(2)">
+                🤠 Rowdy
+                <span class="sort-icon none" id="icon-2"></span>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for style in missing_styles %}
+        <tr>
+            <td>{{ style.style_name }}</td>
+            <td class="text-center">{% if style.is_main_missing %}❌{% else %}✅{% endif %}</td>
+            <td class="text-center">{% if style.is_rowdy_missing %}❌{% else %}✅{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let currentSortColumn = null;
+    let currentSortOrder = null;
+
+    function sortTable(columnIndex) {
+        const table = document.getElementById('missingStyleTable');
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const ths = table.querySelectorAll('thead th');
+        const icons = table.querySelectorAll('.sort-icon');
+
+        const th = ths[columnIndex];
+        const ascending = currentSortColumn === columnIndex ? !currentSortOrder : true;
+
+        rows.sort((rowA, rowB) => {
+            const cellA = rowA.children[columnIndex].textContent.trim();
+            const cellB = rowB.children[columnIndex].textContent.trim();
+
+            let comparison = 0;
+            if (columnIndex === 0) {
+                comparison = cellA.localeCompare(cellB);
+            } else {
+                // ✅ = 1, ❌ = 0 for sorting purposes
+                const valA = cellA === '✅' ? 1 : 0;
+                const valB = cellB === '✅' ? 1 : 0;
+                comparison = valA - valB;
+            }
+
+            return ascending ? comparison : -comparison;
+        });
+
+        currentSortColumn = columnIndex;
+        currentSortOrder = ascending;
+
+        const tbody = table.querySelector('tbody');
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+
+        // Update icons
+        icons.forEach((icon, index) => {
+            icon.className = 'sort-icon none';
+        });
+        const icon = document.getElementById(`icon-${columnIndex}`);
+        icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
+    }
+
+    // Optional: sort by Style name on page load
+    window.onload = function() {
+        sortTable(0);
+    };
+</script>
+
+{% endblock %}

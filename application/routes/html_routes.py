@@ -50,6 +50,7 @@ def beers_page():
 
     return render_template("beers/beers.html", beers=beers)
 
+
 @HTML_BLUEPRINT.route("/beers/beers_rowdy")
 def beers_rowdy_page():
     rowdy_beers = _get_beers_dao().get_beers(username=ROWDY_USERNAME)
@@ -69,6 +70,13 @@ def styles_page():
     styles = _get_beers_dao().get_styles()
 
     return render_template("beers/styles.html", styles=styles)
+
+
+@HTML_BLUEPRINT.route("/beers/missing_styles")
+def missing_styles_page():
+    missing_styles = _get_beers_dao().get_missing_styles()
+
+    return render_template("beers/missing_styles.html", missing_styles=missing_styles)
 
 
 @HTML_BLUEPRINT.route("/disks")
