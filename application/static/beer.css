@@ -43,3 +43,8 @@ th.sortable:hover {
 .sort-icon.none::before {
     content: '▲▼';
 }
+
+.user-col {
+    width: 20%;
+    text-align: center;
+}
