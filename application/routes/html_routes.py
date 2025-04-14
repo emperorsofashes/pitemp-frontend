@@ -75,8 +75,11 @@ def styles_page():
 @HTML_BLUEPRINT.route("/beers/missing_styles")
 def missing_styles_page():
     missing_styles = _get_beers_dao().get_missing_styles()
+    main_missing_count = sum(1 for s in missing_styles if s.is_main_missing)
+    rowdy_missing_count = sum(1 for s in missing_styles if s.is_rowdy_missing)
 
-    return render_template("beers/missing_styles.html", missing_styles=missing_styles)
+    return render_template("beers/missing_styles.html", missing_styles=missing_styles,
+                           main_missing_count=main_missing_count, rowdy_missing_count=rowdy_missing_count)
 
 
 @HTML_BLUEPRINT.route("/disks")
