@@ -388,7 +388,7 @@ STYLES = {
     "Non-Alcoholic - Porter / Stout",
     "Non-Alcoholic - Shandy / Radler",
     "Non-Alcoholic - Sour",
-    "Non-Alcoholic - Wheat Beer",
+    "Non-Alcoholic - Wheat",
     "Non-Alcoholic - Cider / Perry",
     "Non-Alcoholic - Mead",
     "Old / Stock Ale",
