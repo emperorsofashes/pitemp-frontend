@@ -29,21 +29,21 @@
         </tr>
         <tr>
             <td>pi</td>
-            <td>{{ piDataSet.current_temp|round(2) }} °F</td>
-            <td>{{ piDataSet.minimum_temp|round(2) }} °F</td>
-            <td>{{ piDataSet.maximum_temp|round(2) }} °F</td>
+            <td>{% if piDataSet.current_temp != -1 %}{{ piDataSet.current_temp|round(2) }} °F{% else %}No data{% endif %}</td>
+            <td>{% if piDataSet.minimum_temp != -1 %}{{ piDataSet.minimum_temp|round(2) }} °F{% else %}No data{% endif %}</td>
+            <td>{% if piDataSet.maximum_temp != -1 %}{{ piDataSet.maximum_temp|round(2) }} °F{% else %}No data{% endif %}</td>
         </tr>
         <tr>
             <td>pidown</td>
-            <td>{{ pidownDataSet.current_temp|round(2) }} °F</td>
-            <td>{{ pidownDataSet.minimum_temp|round(2) }} °F</td>
-            <td>{{ pidownDataSet.maximum_temp|round(2) }} °F</td>
+            <td>{% if pidownDataSet.current_temp != -1 %}{{ pidownDataSet.current_temp|round(2) }} °F{% else %}No data{% endif %}</td>
+            <td>{% if pidownDataSet.minimum_temp != -1 %}{{ pidownDataSet.minimum_temp|round(2) }} °F{% else %}No data{% endif %}</td>
+            <td>{% if pidownDataSet.maximum_temp != -1 %}{{ pidownDataSet.maximum_temp|round(2) }} °F{% else %}No data{% endif %}</td>
         </tr>
         <tr>
             <td>KATT</td>
-            <td>{{ nswDataSet.current_temp|round(2) }} °F</td>
-            <td>{{ nswDataSet.minimum_temp|round(2) }} °F</td>
-            <td>{{ nswDataSet.maximum_temp|round(2) }} °F</td>
+            <td>{% if nswDataSet.current_temp != -1 %}{{ nswDataSet.current_temp|round(2) }} °F{% else %}No data{% endif %}</td>
+            <td>{% if nswDataSet.minimum_temp != -1 %}{{ nswDataSet.minimum_temp|round(2) }} °F{% else %}No data{% endif %}</td>
+            <td>{% if nswDataSet.maximum_temp != -1 %}{{ nswDataSet.maximum_temp|round(2) }} °F{% else %}No data{% endif %}</td>
         </tr>
     </table>
 </div>
@@ -57,6 +57,12 @@
     <canvas id="myChart"></canvas>
 </div>
 
+{% if not (piDataSet.data or pidownDataSet.data or nswDataSet.data) %}
+<div class="m-3 mx-auto temp-header">
+    <p>No temperature data available for the selected time period.</p>
+</div>
+{% endif %}
+
 <script>
     const ctx = document.getElementById('myChart');
 
@@ -64,21 +70,21 @@
         datasets: [
           {
             label: "{{ piDataSet.label }}",
-            data: {{ piDataSet.data | safe }},
+            data: {{ piDataSet.data | safe if piDataSet.data else '[]' }},
             fill: false,
             backgroundColor: 'white',
             borderColor: 'white',
           },
           {
             label: "{{ pidownDataSet.label }}",
-            data: {{ pidownDataSet.data | safe }},
+            data: {{ pidownDataSet.data | safe if pidownDataSet.data else '[]' }},
             fill: false,
             backgroundColor: '#45DD3E',
             borderColor: '#45DD3E',
           },
           {
             label: "{{ nswDataSet.label }}",
-            data: {{ nswDataSet.data | safe }},
+            data: {{ nswDataSet.data | safe if nswDataSet.data else '[]' }},
             fill: false,
             backgroundColor: '#EC95E7',
             borderColor: '#EC95E7',
@@ -157,6 +163,7 @@
             },
             annotation: {
                 annotations: [
+                {% if maximum_temp != 100 %}
                 {
                     type: 'line',
                     borderDash: [10, 10],
@@ -165,6 +172,8 @@
                     borderColor: 'rgb(255, 0, 0)',
                     borderWidth: 2
                 },
+                {% endif %}
+                {% if minimum_temp != 0 %}
                 {
                     type: 'line',
                     borderDash: [10, 10],
@@ -173,6 +182,7 @@
                     borderColor: 'rgb(20, 195, 204)',
                     borderWidth: 2
                 }
+                {% endif %}
                 ]
             }
           }

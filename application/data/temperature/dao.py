@@ -209,10 +209,11 @@ class ApplicationDao:
         most_recent_document = self.pitemp_collection.find_one(
             filter={"sensorId": sensor_id}, sort=[("timestamp", DESCENDING)]
         )
-        most_recent_timestamp = most_recent_document["timestamp"].replace(tzinfo=pytz.UTC)
-        most_recent_temperature = most_recent_document["temp_f"]
-        if data[-1]["x"] != most_recent_timestamp:
-            data.append({"x": most_recent_timestamp.strftime(DATETIME_FORMAT_STRING), "y": most_recent_temperature})
+        if most_recent_document and data:
+            most_recent_timestamp = most_recent_document["timestamp"].replace(tzinfo=pytz.UTC)
+            most_recent_temperature = most_recent_document["temp_f"]
+            if data[-1]["x"] != most_recent_timestamp:
+                data.append({"x": most_recent_timestamp.strftime(DATETIME_FORMAT_STRING), "y": most_recent_temperature})
 
         # Defaults in case we got no data
         current_temp = temperatures[-1] if temperatures else -1

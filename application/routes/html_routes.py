@@ -170,13 +170,20 @@ def _get_page(days_back: int):
     pidown_data_set = dao.get_temperature_history(sensor_id="pidown", days_back=days_back)
     nsw_data_set = dao.get_temperature_history(sensor_id="KATT", days_back=days_back)
 
+    # Calculate min/max temperatures safely, handling empty data sets
+    all_min_temps = [ds.minimum_temp for ds in [pi_data_set, pidown_data_set, nsw_data_set] if ds.minimum_temp != -1]
+    all_max_temps = [ds.maximum_temp for ds in [pi_data_set, pidown_data_set, nsw_data_set] if ds.maximum_temp != -1]
+    
+    minimum_temp = min(all_min_temps) if all_min_temps else 0
+    maximum_temp = max(all_max_temps) if all_max_temps else 100
+
     return render_template(
         "temperature/temps.html",
         piDataSet=pi_data_set,
         pidownDataSet=pidown_data_set,
         nswDataSet=nsw_data_set,
-        minimum_temp=min(pi_data_set.minimum_temp, pidown_data_set.minimum_temp),
-        maximum_temp=max(pi_data_set.maximum_temp, pidown_data_set.maximum_temp),
+        minimum_temp=minimum_temp,
+        maximum_temp=maximum_temp,
     )
 
 
