@@ -122,6 +122,7 @@ function renderScoreTable() {
     
     // Header row
     html += '<tr>';
+    html += '<th class="wild-card">Cards to Deal</th>';
     html += '<th class="wild-card">Round</th>';
     for (let i = 0; i < gameData.players.length; i++) {
         html += `<th class="player-name">
@@ -134,7 +135,9 @@ function renderScoreTable() {
     // Score rows
     for (let roundIndex = 0; roundIndex < gameData.rounds.length; roundIndex++) {
         const round = gameData.rounds[roundIndex];
+        const cardsToDeal = 7 + roundIndex;
         html += `<tr>
+            <td class="wild-card">${cardsToDeal}</td>
             <td class="wild-card" title="Need ${round.cardsNeeded} cards to go down">${round.requirement}</td>`;
         
         for (let playerIndex = 0; playerIndex < gameData.players.length; playerIndex++) {
@@ -151,6 +154,7 @@ function renderScoreTable() {
     
     // Totals row
     html += '<tr style="background-color: #e6e6e6; font-weight: bold;">';
+    html += '<td class="wild-card"></td>';
     html += '<td class="wild-card">Total</td>';
     for (let i = 0; i < gameData.players.length; i++) {
         html += `<td id="total-${i}">0</td>`;
