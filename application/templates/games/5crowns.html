@@ -166,10 +166,6 @@
             <button class="btn btn-secondary" onclick="resetGame()">New Game</button>
         </div>
         <div id="scoreTableContainer"></div>
-        <div style="margin-top: 20px;">
-            <button class="btn" onclick="addRound()">Add Round</button>
-            <button class="btn btn-secondary" onclick="calculateTotals()">Calculate Totals</button>
-        </div>
     </div>
 </div>
 
@@ -295,11 +291,6 @@ function calculateTotals() {
     }
 }
 
-function addRound() {
-    // This function is here for future expansion if needed
-    // Currently all rounds are created at setup
-    alert('All rounds are already created! 5 Crowns has 11 rounds (3 through King).');
-}
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
