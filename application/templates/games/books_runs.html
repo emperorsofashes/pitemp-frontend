@@ -34,15 +34,17 @@ let gameData = {
     currentRound: 0
 };
 
-// Continental Rummy hands - 7 rounds total
 const roundRequirements = [
-    { round: 1, description: "Two books", cards: 6 },
-    { round: 2, description: "One book & one run", cards: 7 },
-    { round: 3, description: "Two runs", cards: 8 },
-    { round: 4, description: "Three books", cards: 9 },
-    { round: 5, description: "Two books & one run", cards: 10 },
-    { round: 6, description: "Two runs & one book", cards: 11 },
-    { round: 7, description: "Three runs", cards: 12 }
+    { round: 1, description: "Two books", cards: 7 },
+    { round: 2, description: "One book & one run", cards: 8 },
+    { round: 3, description: "Two runs", cards: 9 },
+    { round: 4, description: "Three books", cards: 10 },
+    { round: 5, description: "Two books & one run", cards: 11 },
+    { round: 6, description: "Two runs & one book", cards: 12 },
+    { round: 8, description: "Three runs", cards: 13 },
+    { round: 9, description: "Four books", cards: 13 },
+    { round: 10, description: "Three books & one run", cards: 14 },
+    { round: 11, description: "Two runs & two books", cards: 15 }
 ];
 
 function setupGame() {
@@ -64,7 +66,7 @@ function setupGame() {
         });
     }
     
-    // Create all 7 rounds
+    // Create all rounds
     for (let i = 0; i < roundRequirements.length; i++) {
         gameData.rounds.push({
             roundNumber: i + 1,
@@ -135,9 +137,8 @@ function renderScoreTable() {
     // Score rows
     for (let roundIndex = 0; roundIndex < gameData.rounds.length; roundIndex++) {
         const round = gameData.rounds[roundIndex];
-        const cardsToDeal = 7 + roundIndex;
         html += `<tr>
-            <td class="wild-card">${cardsToDeal}</td>
+            <td class="wild-card">${round.cardsNeeded}</td>
             <td class="wild-card" title="Need ${round.cardsNeeded} cards to go down">${round.requirement}</td>`;
         
         for (let playerIndex = 0; playerIndex < gameData.players.length; playerIndex++) {
