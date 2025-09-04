@@ -212,6 +212,25 @@ function setupGame() {
 }
 
 function resetGame() {
+    // Check if there's any data to lose
+    let hasData = false;
+    for (let round of gameData.rounds) {
+        for (let score of round.scores) {
+            if (score !== '' && score !== 0) {
+                hasData = true;
+                break;
+            }
+        }
+        if (hasData) break;
+    }
+    
+    // Show confirmation if there's data
+    if (hasData) {
+        if (!confirm('Are you sure you want to start a new game? This will clear all current scores.')) {
+            return; // User cancelled
+        }
+    }
+    
     gameData = {
         players: [],
         rounds: [],
