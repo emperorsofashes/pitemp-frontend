@@ -8,27 +8,31 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background-color: var(--bs-body-bg, #fff);
+            color: var(--bs-body-color, #000);
         }
         
         .score-table th, .score-table td {
-            border: 1px solid #ddd;
+            border: 1px solid var(--bs-border-color, #ddd);
             padding: 8px;
             text-align: center;
+            background-color: var(--bs-body-bg, #fff);
+            color: var(--bs-body-color, #000);
         }
         
         .score-table th {
-            background-color: #f2f2f2;
+            background-color: var(--bs-secondary-bg, #f2f2f2);
             font-weight: bold;
         }
         
         .wild-card {
-            background-color: #e6f3ff;
+            background-color: var(--bs-info-bg-subtle, #e6f3ff);
             font-weight: bold;
             min-width: 80px;
         }
         
         .player-name {
-            background-color: #f9f9f9;
+            background-color: var(--bs-secondary-bg, #f9f9f9);
             font-weight: bold;
         }
         
@@ -37,21 +41,34 @@
             text-align: center;
             border: none;
             background: transparent;
+            color: var(--bs-body-color, #000);
+        }
+        
+        .score-input:focus {
+            outline: 2px solid var(--bs-primary, #007bff);
+            outline-offset: -2px;
         }
         
         .player-name-input {
             width: 100px;
             text-align: center;
-            border: 1px solid #ccc;
-            background: white;
+            border: 1px solid var(--bs-border-color, #ccc);
+            background: var(--bs-body-bg, #fff);
+            color: var(--bs-body-color, #000);
+        }
+        
+        .player-name-input:focus {
+            outline: 2px solid var(--bs-primary, #007bff);
+            outline-offset: -2px;
         }
         
         .setup-section {
             margin-bottom: 30px;
             padding: 20px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--bs-border-color, #ddd);
             border-radius: 5px;
-            background-color: #f9f9f9;
+            background-color: var(--bs-secondary-bg, #f9f9f9);
+            color: var(--bs-body-color, #000);
         }
         
         .btn {
@@ -60,20 +77,74 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            background-color: #007bff;
-            color: white;
+            background-color: var(--bs-primary, #007bff);
+            color: var(--bs-primary-text, white);
         }
         
         .btn:hover {
-            background-color: #0056b3;
+            background-color: var(--bs-primary-hover, #0056b3);
         }
         
         .btn-secondary {
-            background-color: #6c757d;
+            background-color: var(--bs-secondary, #6c757d);
         }
         
         .btn-secondary:hover {
-            background-color: #545b62;
+            background-color: var(--bs-secondary-hover, #545b62);
+        }
+        
+        /* Dark mode specific overrides */
+        @media (prefers-color-scheme: dark) {
+            .score-table {
+                background-color: #212529;
+                color: #ffffff;
+            }
+            
+            .score-table th, .score-table td {
+                background-color: #212529;
+                color: #ffffff;
+                border-color: #495057;
+            }
+            
+            .score-table th {
+                background-color: #343a40;
+            }
+            
+            .wild-card {
+                background-color: #0d6efd;
+                color: #ffffff;
+            }
+            
+            .player-name {
+                background-color: #343a40;
+            }
+            
+            .score-input {
+                color: #ffffff;
+            }
+            
+            .player-name-input {
+                background-color: #212529;
+                color: #ffffff;
+                border-color: #495057;
+            }
+            
+            .setup-section {
+                background-color: #343a40;
+                color: #ffffff;
+                border-color: #495057;
+            }
+        }
+        
+        /* Ensure proper contrast for dark mode */
+        .score-table tr:nth-child(even) {
+            background-color: var(--bs-body-bg, #fff);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            .score-table tr:nth-child(even) {
+                background-color: #1a1d20;
+            }
         }
     </style>
 {% endblock %}
