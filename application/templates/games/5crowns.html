@@ -130,7 +130,10 @@ function renderScoreTable() {
             html += `<td>
                 <input type="number" class="score-input" 
                        value="${round.scores[playerIndex] || ''}" 
+                       min="0"
                        onchange="updateScore(${roundIndex}, ${playerIndex}, this.value)"
+                       onkeydown="preventNegativeInput(event)"
+                       oninput="validateScoreInput(this)"
                        placeholder="0">
             </td>`;
         }
@@ -156,8 +159,33 @@ function updatePlayerName(playerIndex, newName) {
     saveGameToStorage();
 }
 
+function preventNegativeInput(event) {
+    // Prevent minus key (-) from being typed
+    if (event.key === '-' || event.key === 'e' || event.key === 'E') {
+        event.preventDefault();
+    }
+}
+
+function validateScoreInput(input) {
+    // Prevent negative numbers from being typed
+    if (input.value < 0) {
+        input.value = 0;
+    }
+}
+
 function updateScore(roundIndex, playerIndex, value) {
-    gameData.rounds[roundIndex].scores[playerIndex] = value === '' ? '' : parseInt(value) || 0;
+    const numValue = value === '' ? '' : parseInt(value) || 0;
+    // Ensure score is not negative - 0 is the minimum
+    if (numValue !== '' && numValue < 0) {
+        gameData.rounds[roundIndex].scores[playerIndex] = 0;
+        // Update the input field to show 0
+        const input = document.querySelector(`input[onchange="updateScore(${roundIndex}, ${playerIndex}, this.value)"]`);
+        if (input) {
+            input.value = 0;
+        }
+    } else {
+        gameData.rounds[roundIndex].scores[playerIndex] = numValue;
+    }
     calculateTotals();
     saveGameToStorage();
 }
