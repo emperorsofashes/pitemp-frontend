@@ -10,7 +10,6 @@
 
 <div class="container">
     <h1>Books and Runs Score Tracker</h1>
-    <p><em>Based on Continental Rummy rules</em></p>
     
     <div id="setupSection" class="setup-section">
         <h3>Game Setup</h3>
@@ -155,8 +154,7 @@ function renderScoreTable() {
     
     // Totals row
     html += '<tr style="background-color: #e6e6e6; font-weight: bold;">';
-    html += '<td class="wild-card"></td>';
-    html += '<td class="wild-card">Total</td>';
+    html += '<td class="wild-card" colspan="2">Total</td>';
     for (let i = 0; i < gameData.players.length; i++) {
         html += `<td id="total-${i}">0</td>`;
     }
