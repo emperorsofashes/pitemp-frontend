@@ -154,15 +154,17 @@
 <div class="container">
     <h1>5 Crowns Score Tracker</h1>
     
-    <div class="setup-section">
+    <div id="setupSection" class="setup-section">
         <h3>Game Setup</h3>
         <label for="playerCount">Number of Players:</label>
         <input type="number" id="playerCount" min="2" max="7" value="4" style="width: 60px; margin: 0 10px;">
         <button class="btn" onclick="setupGame()">Start Game</button>
-        <button class="btn btn-secondary" onclick="resetGame()">Reset</button>
     </div>
     
     <div id="gameArea" style="display: none;">
+        <div style="margin-bottom: 20px;">
+            <button class="btn btn-secondary" onclick="resetGame()">New Game</button>
+        </div>
         <div id="scoreTableContainer"></div>
         <div style="margin-top: 20px;">
             <button class="btn" onclick="addRound()">Add Round</button>
@@ -208,6 +210,7 @@ function setupGame() {
         });
     }
     
+    document.getElementById('setupSection').style.display = 'none';
     document.getElementById('gameArea').style.display = 'block';
     renderScoreTable();
 }
@@ -219,6 +222,7 @@ function resetGame() {
         currentRound: 0
     };
     document.getElementById('gameArea').style.display = 'none';
+    document.getElementById('setupSection').style.display = 'block';
     document.getElementById('playerCount').value = 4;
 }
 
