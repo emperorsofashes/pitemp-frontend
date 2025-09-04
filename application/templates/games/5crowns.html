@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <link rel="shortcut icon" href="{{ url_for('static', filename='toolbox.ico') }}">
+    <title>5 Crowns Score Tracker</title>
+    <style>
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .score-table th, .score-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        .score-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        
+        .wild-card {
+            background-color: #e6f3ff;
+            font-weight: bold;
+            min-width: 80px;
+        }
+        
+        .player-name {
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+        
+        .score-input {
+            width: 60px;
+            text-align: center;
+            border: none;
+            background: transparent;
+        }
+        
+        .player-name-input {
+            width: 100px;
+            text-align: center;
+            border: 1px solid #ccc;
+            background: white;
+        }
+        
+        .setup-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <h1>5 Crowns Score Tracker</h1>
+    
+    <div class="setup-section">
+        <h3>Game Setup</h3>
+        <label for="playerCount">Number of Players:</label>
+        <input type="number" id="playerCount" min="2" max="7" value="4" style="width: 60px; margin: 0 10px;">
+        <button class="btn" onclick="setupGame()">Start Game</button>
+        <button class="btn btn-secondary" onclick="resetGame()">Reset</button>
+    </div>
+    
+    <div id="gameArea" style="display: none;">
+        <div id="scoreTableContainer"></div>
+        <div style="margin-top: 20px;">
+            <button class="btn" onclick="addRound()">Add Round</button>
+            <button class="btn btn-secondary" onclick="calculateTotals()">Calculate Totals</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let gameData = {
+    players: [],
+    rounds: [],
+    currentRound: 0
+};
+
+const wildCards = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+
+function setupGame() {
+    const playerCount = parseInt(document.getElementById('playerCount').value);
+    if (playerCount < 2 || playerCount > 7) {
+        alert('Please enter a number between 2 and 7');
+        return;
+    }
+    
+    gameData.players = [];
+    gameData.rounds = [];
+    gameData.currentRound = 0;
+    
+    for (let i = 1; i <= playerCount; i++) {
+        gameData.players.push({
+            id: i,
+            name: `Player${i}`,
+            totalScore: 0
+        });
+    }
+    
+    // Create initial rounds (3 through King)
+    for (let i = 0; i < wildCards.length; i++) {
+        gameData.rounds.push({
+            roundNumber: i + 1,
+            wildCard: wildCards[i],
+            scores: new Array(playerCount).fill('')
+        });
+    }
+    
+    document.getElementById('gameArea').style.display = 'block';
+    renderScoreTable();
+}
+
+function resetGame() {
+    gameData = {
+        players: [],
+        rounds: [],
+        currentRound: 0
+    };
+    document.getElementById('gameArea').style.display = 'none';
+    document.getElementById('playerCount').value = 4;
+}
+
+function renderScoreTable() {
+    const container = document.getElementById('scoreTableContainer');
+    let html = '<table class="score-table">';
+    
+    // Header row
+    html += '<tr>';
+    html += '<th class="wild-card">Round</th>';
+    for (let i = 0; i < gameData.players.length; i++) {
+        html += `<th class="player-name">
+            <input type="text" class="player-name-input" value="${gameData.players[i].name}" 
+                   onchange="updatePlayerName(${i}, this.value)">
+        </th>`;
+    }
+    html += '</tr>';
+    
+    // Score rows
+    for (let roundIndex = 0; roundIndex < gameData.rounds.length; roundIndex++) {
+        const round = gameData.rounds[roundIndex];
+        html += `<tr>
+            <td class="wild-card">${round.wildCard}</td>`;
+        
+        for (let playerIndex = 0; playerIndex < gameData.players.length; playerIndex++) {
+            html += `<td>
+                <input type="number" class="score-input" 
+                       value="${round.scores[playerIndex] || ''}" 
+                       onchange="updateScore(${roundIndex}, ${playerIndex}, this.value)"
+                       placeholder="0">
+            </td>`;
+        }
+        html += '</tr>';
+    }
+    
+    // Totals row
+    html += '<tr style="background-color: #e6e6e6; font-weight: bold;">';
+    html += '<td class="wild-card">Total</td>';
+    for (let i = 0; i < gameData.players.length; i++) {
+        html += `<td id="total-${i}">0</td>`;
+    }
+    html += '</tr>';
+    
+    html += '</table>';
+    container.innerHTML = html;
+    
+    calculateTotals();
+}
+
+function updatePlayerName(playerIndex, newName) {
+    gameData.players[playerIndex].name = newName;
+}
+
+function updateScore(roundIndex, playerIndex, value) {
+    gameData.rounds[roundIndex].scores[playerIndex] = value === '' ? '' : parseInt(value) || 0;
+    calculateTotals();
+}
+
+function calculateTotals() {
+    for (let playerIndex = 0; playerIndex < gameData.players.length; playerIndex++) {
+        let total = 0;
+        for (let roundIndex = 0; roundIndex < gameData.rounds.length; roundIndex++) {
+            const score = gameData.rounds[roundIndex].scores[playerIndex];
+            if (score !== '' && !isNaN(score)) {
+                total += parseInt(score);
+            }
+        }
+        gameData.players[playerIndex].totalScore = total;
+        document.getElementById(`total-${playerIndex}`).textContent = total;
+    }
+}
+
+function addRound() {
+    // This function is here for future expansion if needed
+    // Currently all rounds are created at setup
+    alert('All rounds are already created! 5 Crowns has 11 rounds (3 through King).');
+}
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-setup with default values for demonstration
+    // setupGame();
+});
+</script>
+
+{% endblock %}

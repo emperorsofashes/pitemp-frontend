@@ -163,6 +163,16 @@ def free_space_graph():
     )
 
 
+@HTML_BLUEPRINT.route("/games")
+def games_index():
+    return render_template("games/index.html")
+
+
+@HTML_BLUEPRINT.route("/games/5crowns")
+def five_crowns():
+    return render_template("games/5crowns.html")
+
+
 def _get_page(days_back: int):
     dao = _get_dao()
 
