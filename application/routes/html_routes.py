@@ -173,6 +173,11 @@ def five_crowns():
     return render_template("games/5crowns.html")
 
 
+@HTML_BLUEPRINT.route("/games/books-runs")
+def books_runs():
+    return render_template("games/books_runs.html")
+
+
 def _get_page(days_back: int):
     dao = _get_dao()
 
