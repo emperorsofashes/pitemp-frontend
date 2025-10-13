@@ -78,8 +78,12 @@ def missing_styles_page():
     main_missing_count = sum(1 for s in missing_styles if s.is_main_missing)
     rowdy_missing_count = sum(1 for s in missing_styles if s.is_rowdy_missing)
 
-    return render_template("beers/missing_styles.html", missing_styles=missing_styles,
-                           main_missing_count=main_missing_count, rowdy_missing_count=rowdy_missing_count)
+    return render_template(
+        "beers/missing_styles.html",
+        missing_styles=missing_styles,
+        main_missing_count=main_missing_count,
+        rowdy_missing_count=rowdy_missing_count,
+    )
 
 
 @HTML_BLUEPRINT.route("/disks")
@@ -135,20 +139,31 @@ def free_space_graph():
     drive_data = []
     drive_letters = list(data.keys())
 
-    # Organize time labels and free space data
-    for drive_letter, snapshots in data.items():
-        free_space = []
+    # Collect all unique timestamps across all snapshots and sort them from oldest to newest
+    for snapshots in data.values():
         for snapshot in snapshots:
             timestamp = snapshot.timestamp.strftime(DATETIME_FORMAT_STRING)
             if timestamp not in time_labels:
                 time_labels.append(timestamp)
-            free_space.append(snapshot.free_bytes)
-        drive_data.append(free_space)
-
-    # Sort time labels and align data
     time_labels = sorted(time_labels)
-    for i, free_space in enumerate(drive_data):
-        drive_data[i] = [free_space[time_labels.index(ts)] if ts in time_labels else 0 for ts in time_labels]
+
+    # Create a dictionary to map timestamps to their index for easier lookup
+    timestamp_indices: dict[str, int] = {ts: idx for idx, ts in enumerate(time_labels)}
+
+    # Not all drives may have data for all timestamps, so initialize with None to start
+    for drive_letter, snapshots in data.items():
+        # Create a list of None values for each timestamp
+        free_space: list[int | None] = [None] * len(time_labels)
+
+        # Fill in the actual values we have
+        for snapshot in snapshots:
+            timestamp = snapshot.timestamp.strftime(DATETIME_FORMAT_STRING)
+            if timestamp in timestamp_indices:  # Should always be true, but safe check
+                idx = timestamp_indices[timestamp]
+                free_space[idx] = snapshot.free_bytes
+
+        # Replace any remaining None values with 0
+        drive_data.append([0 if x is None else x for x in free_space])
 
     # Sort drive data based on the most recent free space (last value in each list)
     sorted_drive_data = sorted(zip(drive_letters, drive_data), key=lambda x: x[1][-1], reverse=True)
@@ -188,7 +203,7 @@ def _get_page(days_back: int):
     # Calculate min/max temperatures safely, handling empty data sets
     all_min_temps = [ds.minimum_temp for ds in [pi_data_set, pidown_data_set, nsw_data_set] if ds.minimum_temp != -1]
     all_max_temps = [ds.maximum_temp for ds in [pi_data_set, pidown_data_set, nsw_data_set] if ds.maximum_temp != -1]
-    
+
     minimum_temp = min(all_min_temps) if all_min_temps else 0
     maximum_temp = max(all_max_temps) if all_max_temps else 100
 
