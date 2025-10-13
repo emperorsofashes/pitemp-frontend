@@ -150,10 +150,9 @@ def free_space_graph():
     # Create a dictionary to map timestamps to their index for easier lookup
     timestamp_indices: dict[str, int] = {ts: idx for idx, ts in enumerate(time_labels)}
 
-    # Not all drives may have data for all timestamps, so initialize with None to start
+    # Initialize with 0 for all timestamps, then fill in actual values if we have them
     for drive_letter, snapshots in data.items():
-        # Create a list of None values for each timestamp
-        free_space: list[int | None] = [None] * len(time_labels)
+        free_space = [0] * len(time_labels)
 
         # Fill in the actual values we have
         for snapshot in snapshots:
@@ -162,8 +161,7 @@ def free_space_graph():
                 idx = timestamp_indices[timestamp]
                 free_space[idx] = snapshot.free_bytes
 
-        # Replace any remaining None values with 0
-        drive_data.append([0 if x is None else x for x in free_space])
+        drive_data.append(free_space)
 
     # Sort drive data based on the most recent free space (last value in each list)
     sorted_drive_data = sorted(zip(drive_letters, drive_data), key=lambda x: x[1][-1], reverse=True)
