@@ -89,11 +89,7 @@
         tbody.innerHTML = '<tr><td colspan="3" class="text-center">Loading...</td></tr>';
         
         // Fetch data for the current version
-        fetch(`/beers/missing_styles?version=${currentVersion}`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
+        fetch(`/beers/missing_styles_data?version=${currentVersion}`)
             .then(response => response.json())
             .then(data => {
                 updateTable(data);
