@@ -7,6 +7,18 @@
 {% block content %}
 
 <h1 class="text-center">Missing Beer Styles</h1>
+
+<div class="text-center mb-4">
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-secondary" id="v1-toggle" onclick="switchToV1()">
+            v1 Styles (Legacy)
+        </button>
+        <button type="button" class="btn btn-primary" id="v2-toggle" onclick="switchToV2()">
+            v2 Styles (Current)
+        </button>
+    </div>
+</div>
+
 <p class="text-center">
     Styles that at least one person hasn't had.<br>
     ✅ means the person has had the style.<br>
@@ -44,6 +56,87 @@
 <script>
     let currentSortColumn = null;
     let currentSortOrder = null;
+    let currentVersion = 'v2'; // Default to v2
+
+    function switchToV1() {
+        currentVersion = 'v1';
+        updateToggleButtons();
+        loadStylesData();
+    }
+
+    function switchToV2() {
+        currentVersion = 'v2';
+        updateToggleButtons();
+        loadStylesData();
+    }
+
+    function updateToggleButtons() {
+        const v1Btn = document.getElementById('v1-toggle');
+        const v2Btn = document.getElementById('v2-toggle');
+        
+        if (currentVersion === 'v1') {
+            v1Btn.className = 'btn btn-primary';
+            v2Btn.className = 'btn btn-outline-secondary';
+        } else {
+            v1Btn.className = 'btn btn-outline-secondary';
+            v2Btn.className = 'btn btn-primary';
+        }
+    }
+
+    function loadStylesData() {
+        // Show loading state
+        const tbody = document.querySelector('#missingStyleTable tbody');
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center">Loading...</td></tr>';
+        
+        // Fetch data for the current version
+        fetch(`/beers/missing_styles?version=${currentVersion}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                updateTable(data);
+                // Re-sort after loading new data
+                if (currentSortColumn !== null) {
+                    sortTable(currentSortColumn);
+                } else {
+                    // Default sort by style name
+                    sortTable(0);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading styles:', error);
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Error loading data</td></tr>';
+            });
+    }
+
+    function updateTable(data) {
+        const tbody = document.querySelector('#missingStyleTable tbody');
+        tbody.innerHTML = '';
+        
+        // Update user counts in headers
+        const mainHeader = document.querySelector('th:nth-child(2)');
+        const rowdyHeader = document.querySelector('th:nth-child(3)');
+        
+        if (mainHeader) {
+            mainHeader.innerHTML = `🐉 Ty (${data.main_missing_count}) <span class="sort-icon none" id="icon-1"></span>`;
+        }
+        if (rowdyHeader) {
+            rowdyHeader.innerHTML = `🤠 Rowdy (${data.rowdy_missing_count}) <span class="sort-icon none" id="icon-2"></span>`;
+        }
+        
+        // Populate table rows
+        data.missing_styles.forEach(style => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${style.style_name}</td>
+                <td class="text-center">${style.is_main_missing ? '❌' : '✅'}</td>
+                <td class="text-center">${style.is_rowdy_missing ? '❌' : '✅'}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
 
     function sortTable(columnIndex) {
         const table = document.getElementById('missingStyleTable');
@@ -83,12 +176,15 @@
             icon.className = 'sort-icon none';
         });
         const icon = document.getElementById(`icon-${columnIndex}`);
-        icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
+        if (icon) {
+            icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
+        }
     }
 
-    // Optional: sort by Style name on page load
+    // Initialize page with v2 data
     window.onload = function() {
-        sortTable(0);
+        updateToggleButtons();
+        loadStylesData();
     };
 </script>
 

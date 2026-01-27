@@ -242,8 +242,12 @@ class BeerDao:
 
         return styles
 
-    def get_missing_styles(self) -> list[MissingStyle]:
-        cache_key = "missing_styles"
+    def get_missing_styles(self, styles=None) -> list[MissingStyle]:
+        if styles is None:
+            from application.constants.beer_constants import STYLES
+            styles = STYLES
+            
+        cache_key = f"missing_styles_{hash(frozenset(styles))}"
         serialized_styles_list = self.cache.get(cache_key)
         if serialized_styles_list:
             # noinspection PyTypeChecker
@@ -253,7 +257,7 @@ class BeerDao:
         had_styles_rowdy = set(self.beers_rowdy_collection.distinct("style"))
 
         missing_styles = []
-        for style_name in STYLES:
+        for style_name in styles:
             is_main_missing = True if style_name not in had_styles_main else False
             is_rowdy_missing = True if style_name not in had_styles_rowdy else False
 

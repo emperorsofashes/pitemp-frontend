@@ -1,6 +1,6 @@
 import logging
 
-from flask import Blueprint, current_app, render_template
+from flask import Blueprint, current_app, render_template, request, jsonify
 
 from application import DisksDao, DISKS_DATABASE_CONFIG_KEY
 from application.constants.app_constants import (
@@ -8,7 +8,7 @@ from application.constants.app_constants import (
     BEERS_DATABASE_CONFIG_KEY,
     DATETIME_FORMAT_STRING,
 )
-from application.constants.beer_constants import ROWDY_USERNAME
+from application.constants.beer_constants import ROWDY_USERNAME, BEER_STYLES_V1, BEER_STYLES_V2
 from application.data.beer.dao import BeerDao
 from application.data.temperature.dao import ApplicationDao
 
@@ -74,9 +74,32 @@ def styles_page():
 
 @HTML_BLUEPRINT.route("/beers/missing_styles")
 def missing_styles_page():
-    missing_styles = _get_beers_dao().get_missing_styles()
+    version = request.args.get('version', 'v2')  # Default to v2
+    
+    if version == 'v1':
+        styles = BEER_STYLES_V1
+    elif version == 'v2':
+        styles = BEER_STYLES_V2
+    else:
+        styles = BEER_STYLES_V2  # Fallback to v2
+    
+    missing_styles = _get_beers_dao().get_missing_styles(styles)
     main_missing_count = sum(1 for s in missing_styles if s.is_main_missing)
     rowdy_missing_count = sum(1 for s in missing_styles if s.is_rowdy_missing)
+
+    # Return JSON for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'missing_styles': [
+                {
+                    'style_name': s.style_name,
+                    'is_main_missing': s.is_main_missing,
+                    'is_rowdy_missing': s.is_rowdy_missing
+                } for s in missing_styles
+            ],
+            'main_missing_count': main_missing_count,
+            'rowdy_missing_count': rowdy_missing_count
+        })
 
     return render_template(
         "beers/missing_styles.html",
