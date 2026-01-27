@@ -97,12 +97,12 @@
             .then(response => response.json())
             .then(data => {
                 updateTable(data);
-                // Re-sort after loading new data
+                // Re-sort after loading new data, but preserve current sort order
                 if (currentSortColumn !== null) {
-                    sortTable(currentSortColumn);
+                    sortTable(currentSortColumn, currentSortOrder);
                 } else {
-                    // Default sort by style name
-                    sortTable(0);
+                    // Default sort by style name (ascending)
+                    sortTable(0, true);
                 }
             })
             .catch(error => {
@@ -115,15 +115,19 @@
         const tbody = document.querySelector('#missingStyleTable tbody');
         tbody.innerHTML = '';
         
-        // Update user counts in headers
+        // Update user counts in headers without overwriting sort icons
         const mainHeader = document.querySelector('th:nth-child(2)');
         const rowdyHeader = document.querySelector('th:nth-child(3)');
         
         if (mainHeader) {
-            mainHeader.innerHTML = `🐉 Ty (${data.main_missing_count}) <span class="sort-icon none" id="icon-1"></span>`;
+            const currentIcon = document.getElementById('icon-1');
+            const iconClass = currentIcon ? currentIcon.className : 'sort-icon none';
+            mainHeader.innerHTML = `🐉 Ty (${data.main_missing_count}) <span class="${iconClass}" id="icon-1"></span>`;
         }
         if (rowdyHeader) {
-            rowdyHeader.innerHTML = `🤠 Rowdy (${data.rowdy_missing_count}) <span class="sort-icon none" id="icon-2"></span>`;
+            const currentIcon = document.getElementById('icon-2');
+            const iconClass = currentIcon ? currentIcon.className : 'sort-icon none';
+            rowdyHeader.innerHTML = `🤠 Rowdy (${data.rowdy_missing_count}) <span class="${iconClass}" id="icon-2"></span>`;
         }
         
         // Populate table rows
@@ -138,14 +142,21 @@
         });
     }
 
-    function sortTable(columnIndex) {
+    function sortTable(columnIndex, preserveOrder = null) {
         const table = document.getElementById('missingStyleTable');
         const rows = Array.from(table.querySelectorAll('tbody tr'));
         const ths = table.querySelectorAll('thead th');
         const icons = table.querySelectorAll('.sort-icon');
 
         const th = ths[columnIndex];
-        const ascending = currentSortColumn === columnIndex ? !currentSortOrder : true;
+        
+        // If preserveOrder is provided, use it; otherwise use the normal toggle logic
+        let ascending;
+        if (preserveOrder !== null) {
+            ascending = preserveOrder;
+        } else {
+            ascending = currentSortColumn === columnIndex ? !currentSortOrder : true;
+        }
 
         rows.sort((rowA, rowB) => {
             const cellA = rowA.children[columnIndex].textContent.trim();
