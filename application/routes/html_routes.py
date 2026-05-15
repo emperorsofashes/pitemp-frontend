@@ -55,11 +55,10 @@ def beers_page():
 
 @HTML_BLUEPRINT.route("/beers/beers_data")
 def beers_data():
-    """API endpoint to fetch beers as JSON for async loading"""
-    skip = request.args.get('skip', 20, type=int)
+    """API endpoint to fetch all beers as JSON for async loading"""
     username = request.args.get('username', None, type=str)
     
-    beers = _get_beers_dao().get_beers(username=username, skip=skip)
+    beers = _get_beers_dao().get_beers(username=username)
     
     return jsonify({
         'beers': [

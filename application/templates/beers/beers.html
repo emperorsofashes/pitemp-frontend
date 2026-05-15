@@ -133,12 +133,13 @@
             
             try {
                 const username = {% if username %}'{{ username | lower }}'{% else %}null{% endif %};
-                const url = `/beers/beers_data?skip=20${username ? '&username=' + username : ''}`;
+                const url = `/beers/beers_data${username ? '?username=' + username : ''}`;
                 
                 const response = await fetch(url);
                 const data = await response.json();
                 
-                // Append new beers to the table
+                // Clear existing rows and replace with all beers
+                tbody.innerHTML = '';
                 data.beers.forEach(beer => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
