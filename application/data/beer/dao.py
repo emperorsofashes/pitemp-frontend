@@ -55,11 +55,17 @@ class BeerDao:
 
         LOG.info(f"Database collections: {self.database.list_collection_names()}")
 
-    def get_beers(self, username: Optional[str] = None) -> list[Beer]:
+    def get_beers(self, username: Optional[str] = None, limit: Optional[int] = None, skip: Optional[int] = None) -> list[Beer]:
         if username:
             cache_key = f"beer_list_{username}"
         else:
             cache_key = "beer_list"
+
+        # Include limit and skip in cache key if specified
+        if limit is not None:
+            cache_key = f"{cache_key}_limit_{limit}"
+        if skip is not None:
+            cache_key = f"{cache_key}_skip_{skip}"
 
         serialized_beer_list = self.cache.get(cache_key)
         if serialized_beer_list:
@@ -79,7 +85,19 @@ class BeerDao:
         else:
             raise ValueError("Unknown username")
 
-        beer_documents = collection.find()
+        query = collection.find()
+        
+        # Sort by first_checkin descending when limit is specified to get most recent
+        if limit is not None:
+            query = query.sort("first_checkin", -1)
+        
+        if skip is not None:
+            query = query.skip(skip)
+        
+        if limit is not None:
+            query = query.limit(limit)
+        
+        beer_documents = query
         beers = []
         for beer_document in beer_documents:
             brewery_id = beer_document["brewery_id"]

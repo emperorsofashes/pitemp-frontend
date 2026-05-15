@@ -46,9 +46,36 @@ def breweries_page():
 
 @HTML_BLUEPRINT.route("/beers/beers")
 def beers_page():
-    beers = _get_beers_dao().get_beers()
+    beers_dao = _get_beers_dao()
+    beers = beers_dao.get_beers(limit=20)
+    total_count = len(beers_dao.get_beers())
 
-    return render_template("beers/beers.html", beers=beers)
+    return render_template("beers/beers.html", beers=beers, total_count=total_count)
+
+
+@HTML_BLUEPRINT.route("/beers/beers_data")
+def beers_data():
+    """API endpoint to fetch beers as JSON for async loading"""
+    skip = request.args.get('skip', 20, type=int)
+    username = request.args.get('username', None, type=str)
+    
+    beers = _get_beers_dao().get_beers(username=username, skip=skip)
+    
+    return jsonify({
+        'beers': [
+            {
+                'name': beer.name,
+                'id': beer.id,
+                'brewery': beer.brewery,
+                'country': beer.country,
+                'rating': beer.rating,
+                'style': beer.style,
+                'abv': beer.abv,
+                'first_checkin': beer.first_checkin.isoformat()
+            }
+            for beer in beers
+        ]
+    })
 
 
 @HTML_BLUEPRINT.route("/beers/beers_rowdy")

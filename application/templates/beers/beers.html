@@ -15,7 +15,13 @@
 {% endwith %}
 
     <h1 class="text-center">Beers{% if username %} ({{ username }}){% endif %}</h1>
-    <p class="text-center">Total: {{ beers | length }} distinct beers</p>
+    <p class="text-center" id="beerCountDisplay">Showing {{ beers | length }}{% if total_count %} of {{ total_count }}{% endif %} distinct beers</p>
+    {% if total_count and total_count > 20 %}
+    <div class="text-center">
+        <button id="loadAllBeersBtn" class="btn btn-primary">Load all beers</button>
+        <span id="loadingIndicator" style="display: none; margin-left: 10px;">Loading...</span>
+    </div>
+    {% endif %}
     <table id="beerTable">
         <thead>
             <tr>
@@ -117,9 +123,69 @@
             icon.className = `sort-icon ${ascending ? 'asc' : 'desc'}`;
         }
 
+        async function loadAllBeers() {
+            const button = document.getElementById('loadAllBeersBtn');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const tbody = document.querySelector('#beerTable tbody');
+            
+            button.disabled = true;
+            loadingIndicator.style.display = 'inline';
+            
+            try {
+                const username = {% if username %}'{{ username | lower }}'{% else %}null{% endif %};
+                const url = `/beers/beers_data?skip=20${username ? '&username=' + username : ''}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                // Append new beers to the table
+                data.beers.forEach(beer => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${beer.name}</td>
+                        <td>${beer.id}</td>
+                        <td>${beer.brewery}</td>
+                        <td>${beer.country}</td>
+                        <td>${beer.rating !== -1 ? beer.rating : ''}</td>
+                        <td>${beer.style}</td>
+                        <td>${beer.abv !== -1 ? beer.abv : ''}</td>
+                        <td data-full-date="${beer.first_checkin}">${new Date(beer.first_checkin).toLocaleDateString('en-CA')}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                // Update the count display
+                const countDisplay = document.getElementById('beerCountDisplay');
+                const currentCount = tbody.querySelectorAll('tr').length;
+                countDisplay.textContent = `Showing ${currentCount} distinct beers`;
+                
+                // Hide the loading indicator
+                loadingIndicator.style.display = 'none';
+                
+                // Hide the button
+                button.style.display = 'none';
+                
+                // Re-sort the table if it was previously sorted
+                if (currentSortColumn !== null) {
+                    sortTable(currentSortColumn, currentSortOrder);
+                }
+            } catch (error) {
+                console.error('Error loading beers:', error);
+                button.disabled = false;
+                loadingIndicator.style.display = 'none';
+                alert('Failed to load beers. Please try again.');
+            }
+        }
+
         // Call sortTable on page load for the "First Check-in" column (index 6) in descending order
         window.onload = function() {
             sortTable(7, false); // false = descending order
+            
+            // Attach event listener to load all beers button
+            const loadAllBeersBtn = document.getElementById('loadAllBeersBtn');
+            if (loadAllBeersBtn) {
+                loadAllBeersBtn.addEventListener('click', loadAllBeers);
+            }
         };
     </script>
 
