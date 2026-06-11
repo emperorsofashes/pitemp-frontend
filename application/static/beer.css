@@ -55,3 +55,11 @@ th.sortable:hover {
     width: 20%;
     text-align: center;
 }
+
+.load-beers-container {
+    margin-bottom: 20px;
+}
+
+#beerTable {
+    margin-bottom: 20px;
+}

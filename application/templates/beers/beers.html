@@ -17,7 +17,7 @@
     <h1 class="text-center">Beers{% if username %} ({{ username }}){% endif %}</h1>
     <p class="text-center" id="beerCountDisplay">Showing {{ beers | length }}{% if total_count %} of {{ total_count }}{% endif %} distinct beers</p>
     {% if total_count and total_count > 20 %}
-    <div class="text-center">
+    <div class="text-center load-beers-container">
         <button id="loadAllBeersBtn" class="btn btn-primary">Load all beers</button>
         <span id="loadingIndicator" style="display: none; margin-left: 10px;">Loading...</span>
     </div>
