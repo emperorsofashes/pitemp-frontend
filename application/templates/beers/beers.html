@@ -15,7 +15,7 @@
 {% endwith %}
 
     <h1 class="text-center">Beers{% if username %} ({{ username }}){% endif %}</h1>
-    <p class="text-center" id="beerCountDisplay">Showing {{ beers | length }}{% if total_count %} of {{ total_count }}{% endif %} distinct beers</p>
+    <p class="text-center" id="beerCountDisplay">Showing {{ beers | length }}{% if total_count %} of {{ total_count }}{% endif %} distinct beers from {{ beers | map(attribute='brewery') | unique | list | length }} distinct breweries</p>
     {% if total_count and total_count > 20 %}
     <div class="text-center load-beers-container">
         <button id="loadAllBeersBtn" class="btn btn-primary">Load all beers</button>
@@ -158,7 +158,9 @@
                 // Update the count display
                 const countDisplay = document.getElementById('beerCountDisplay');
                 const currentCount = tbody.querySelectorAll('tr').length;
-                countDisplay.textContent = `Showing ${currentCount} distinct beers`;
+                const breweries = new Set();
+                data.beers.forEach(beer => breweries.add(beer.brewery));
+                countDisplay.textContent = `Showing ${currentCount} distinct beers from ${breweries.size} distinct breweries`;
                 
                 // Hide the loading indicator
                 loadingIndicator.style.display = 'none';
