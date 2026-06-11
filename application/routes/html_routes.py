@@ -48,7 +48,7 @@ def breweries_page():
 def beers_page():
     beers_dao = _get_beers_dao()
     beers = beers_dao.get_beers(limit=20)
-    total_count = len(beers_dao.get_beers())
+    total_count = beers_dao.get_num_total_beers()
 
     return render_template("beers/beers.html", beers=beers, total_count=total_count)
 
@@ -57,9 +57,9 @@ def beers_page():
 def beers_data():
     """API endpoint to fetch all beers as JSON for async loading"""
     username = request.args.get('username', None, type=str)
-    
+
     beers = _get_beers_dao().get_beers(username=username)
-    
+
     return jsonify({
         'beers': [
             {
@@ -79,9 +79,12 @@ def beers_data():
 
 @HTML_BLUEPRINT.route("/beers/beers_rowdy")
 def beers_rowdy_page():
-    rowdy_beers = _get_beers_dao().get_beers(username=ROWDY_USERNAME)
+    beers_dao = _get_beers_dao()
+    rowdy_beers = beers_dao.get_beers(username=ROWDY_USERNAME, limit=20)
+    total_count = beers_dao.get_num_total_beers(username=ROWDY_USERNAME)
 
-    return render_template("beers/beers.html", beers=rowdy_beers, username=ROWDY_USERNAME.title())
+    return render_template("beers/beers.html", beers=rowdy_beers, total_count=total_count,
+                           username=ROWDY_USERNAME.title())
 
 
 @HTML_BLUEPRINT.route("/beers/countries")
@@ -102,14 +105,14 @@ def styles_page():
 def missing_styles_page():
     """UI endpoint for missing styles page"""
     version = request.args.get('version', 'v2')  # Default to v2
-    
+
     if version == 'v1':
         styles = BEER_STYLES_V1
     elif version == 'v2':
         styles = BEER_STYLES_V2
     else:
         styles = BEER_STYLES_V2  # Fallback to v2
-    
+
     missing_styles = _get_beers_dao().get_missing_styles(styles)
     main_missing_count = sum(1 for s in missing_styles if s.is_main_missing)
     rowdy_missing_count = sum(1 for s in missing_styles if s.is_rowdy_missing)
@@ -126,14 +129,14 @@ def missing_styles_page():
 def missing_styles_data():
     """Data endpoint for missing styles API"""
     version = request.args.get('version', 'v2')  # Default to v2
-    
+
     if version == 'v1':
         styles = BEER_STYLES_V1
     elif version == 'v2':
         styles = BEER_STYLES_V2
     else:
         styles = BEER_STYLES_V2  # Fallback to v2
-    
+
     missing_styles = _get_beers_dao().get_missing_styles(styles)
     main_missing_count = sum(1 for s in missing_styles if s.is_main_missing)
     rowdy_missing_count = sum(1 for s in missing_styles if s.is_rowdy_missing)

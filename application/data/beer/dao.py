@@ -55,6 +55,16 @@ class BeerDao:
 
         LOG.info(f"Database collections: {self.database.list_collection_names()}")
 
+    def get_num_total_beers(self, username: Optional[str] = None) -> int:
+        if username is None:
+            collection = self.beers_collection
+        elif username == ROWDY_USERNAME:
+            collection = self.beers_rowdy_collection
+        else:
+            raise ValueError("Unknown username")
+
+        return collection.count_documents({})
+
     def get_beers(self, username: Optional[str] = None, limit: Optional[int] = None, skip: Optional[int] = None) -> list[Beer]:
         if username:
             cache_key = f"beer_list_{username}"
@@ -71,12 +81,6 @@ class BeerDao:
         if serialized_beer_list:
             # noinspection PyTypeChecker
             return pickle.loads(serialized_beer_list)
-
-        brewery_id_to_country = dict()
-        breweries_documents = self.breweries_collection.find()
-        for brewery_document in breweries_documents:
-            brewery_id = brewery_document["id"]
-            brewery_id_to_country[brewery_id] = self._get_country(brewery_document["full_location"])
 
         if username is None:
             collection = self.beers_collection
@@ -99,8 +103,10 @@ class BeerDao:
         
         beer_documents = query
         beers = []
+        brewery_ids = set()
         for beer_document in beer_documents:
             brewery_id = beer_document["brewery_id"]
+            brewery_ids.add(brewery_id)
             beer = Beer(
                 name=beer_document["name"],
                 id=beer_document["id"],
@@ -110,9 +116,25 @@ class BeerDao:
                 style=beer_document["style"],
                 abv=beer_document["abv"],
                 first_checkin=beer_document["first_checkin"],
-                country=brewery_id_to_country.get(brewery_id, ""),
+                country="",
             )
             beers.append(beer)
+
+        # Fetch breweries: use $in when limit is set to avoid large lists, otherwise fetch all
+        brewery_id_to_country = dict()
+        if limit is not None and brewery_ids:
+            breweries_documents = self.breweries_collection.find({"id": {"$in": list(brewery_ids)}})
+        else:
+            breweries_documents = self.breweries_collection.find()
+        
+        for brewery_document in breweries_documents:
+            brewery_id = brewery_document["id"]
+            brewery_country = self._get_country(brewery_document["full_location"])
+            brewery_id_to_country[brewery_id] = brewery_country
+
+        # Update beers with country information
+        for beer in beers:
+            beer.country = brewery_id_to_country.get(beer.brewery_id, "")
 
         serialized_data = pickle.dumps(beers)
         self.cache.set(cache_key, serialized_data, ex=BEER_CACHE_TTL)
