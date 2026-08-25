@@ -793,5 +793,16 @@ BEER_STYLES_V2 = {
     "Winter Warmer",
 }
 
+# Mapping of v1 style names to their v2 equivalents for handling renames
+STYLE_RENAME_MAPPING_V1_TO_V2 = {
+    "Altbier - Sticke": "Altbier - Sticke / Latzenbier",
+    "Lager - American Pre-Prohibition": "Historical Beer - Pre-Prohibition Lager",
+    "Grodziskie / Grätzer": "Historical Beer - Grodziskie / Grätzer",
+    "Roggenbier": "Historical Beer - Roggenbier",
+    "Cider - Herbed / Spiced / Hopped": "Cider - Herbed / Spiced",
+    "Makgeolli": "Makgeolli - Traditional",
+    "Lager - Leichtbier": "Lager - German Light / Leichtbier",
+}
+
 # Default to current version for backward compatibility
 STYLES = BEER_STYLES_V2

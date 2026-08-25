@@ -18,7 +18,7 @@ from application.constants.beer_constants import (
     COUNTRIES,
     BEERS_ROWDY_COLLECTION_NAME,
     ROWDY_USERNAME,
-    STYLES,
+    STYLE_RENAME_MAPPING_V1_TO_V2,
 )
 from application.data.beer.beer import Beer
 from application.data.beer.brewery import Brewery
@@ -298,8 +298,21 @@ class BeerDao:
 
         missing_styles = []
         for style_name in styles:
+            # Check if the style exists directly in the database
             is_main_missing = True if style_name not in had_styles_main else False
             is_rowdy_missing = True if style_name not in had_styles_rowdy else False
+            
+            # If the style is missing, check if it was renamed in v2
+            # If so, check if the v2 equivalent exists in the database
+            if is_main_missing and style_name in STYLE_RENAME_MAPPING_V1_TO_V2:
+                v2_style = STYLE_RENAME_MAPPING_V1_TO_V2[style_name]
+                if v2_style in had_styles_main:
+                    is_main_missing = False
+            
+            if is_rowdy_missing and style_name in STYLE_RENAME_MAPPING_V1_TO_V2:
+                v2_style = STYLE_RENAME_MAPPING_V1_TO_V2[style_name]
+                if v2_style in had_styles_rowdy:
+                    is_rowdy_missing = False
 
             if is_main_missing or is_rowdy_missing:
                 missing_styles.append(
