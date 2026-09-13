@@ -35,11 +35,21 @@
                 <tbody>
                     {% for bird in birds %}
                     <tr>
-                        <td>{{ bird.common_name }}</td>
+                        <td>
+                            {{ bird.common_name }}
+                            {% if bird.id in life_list_bird_ids %}
+                            <span class="text-success" title="Already on life list">✓</span>
+                            {% endif %}
+                        </td>
                         <td><em>{{ bird.scientific_name }}</em></td>
                         <td>
+                            {% if bird.id in life_list_bird_ids %}
+                            <button onclick="showEditForm('{{ bird.id }}')" 
+                                    class="btn btn-warning btn-sm">Edit Sighting</button>
+                            {% else %}
                             <button onclick="showAddForm('{{ bird.id }}', '{{ bird.scientific_name }}', '{{ bird.common_name }}')" 
                                     class="btn btn-success btn-sm">Add to List</button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -91,6 +101,46 @@ function showAddForm(birdId, scientificName, commonName) {
 
 function hideAddForm() {
     document.getElementById('addFormContainer').style.display = 'none';
+}
+
+function showEditForm(birdId) {
+    // Redirect to the add page with the bird_id, which will check for duplicates
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/birds/add';
+    
+    const birdIdInput = document.createElement('input');
+    birdIdInput.type = 'hidden';
+    birdIdInput.name = 'bird_id';
+    birdIdInput.value = birdId;
+    
+    // We need to get the scientific_name and common_name from the table row
+    const row = event.target.closest('tr');
+    const scientificName = row.querySelector('td:nth-child(2) em').textContent;
+    const commonName = row.querySelector('td:nth-child(1)').textContent.replace('✓', '').trim();
+    
+    const scientificNameInput = document.createElement('input');
+    scientificNameInput.type = 'hidden';
+    scientificNameInput.name = 'scientific_name';
+    scientificNameInput.value = scientificName;
+    
+    const commonNameInput = document.createElement('input');
+    commonNameInput.type = 'hidden';
+    commonNameInput.name = 'common_name';
+    commonNameInput.value = commonName;
+    
+    const dateInput = document.createElement('input');
+    dateInput.type = 'hidden';
+    dateInput.name = 'date_sighted';
+    dateInput.value = new Date().toISOString().split('T')[0];
+    
+    form.appendChild(birdIdInput);
+    form.appendChild(scientificNameInput);
+    form.appendChild(commonNameInput);
+    form.appendChild(dateInput);
+    
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 {% endblock %}

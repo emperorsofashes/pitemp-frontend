@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <title>Edit Bird Sighting</title>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Edit Bird Sighting</h1>
+    
+    <a href="/birds" class="btn btn-secondary mb-3">Back to Life List</a>
+    
+    <div class="card bg-dark text-white">
+        <div class="card-body">
+            <h5 class="card-title">{{ entry.common_name }}</h5>
+            <p class="card-text"><em>{{ entry.scientific_name }}</em></p>
+            
+            <form action="/birds/edit_entry/{{ entry.id }}" method="POST">
+                <div class="form-group">
+                    <label for="date_sighted">Date Sighted:</label>
+                    <input type="date" name="date_sighted" id="date_sighted" class="form-control" 
+                           value="{{ entry.date_sighted.strftime('%Y-%m-%d') }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Notes (optional):</label>
+                    <textarea name="notes" id="notes" class="form-control" rows="3">{{ entry.notes or '' }}</textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-success">Update Sighting</button>
+                <a href="/birds" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

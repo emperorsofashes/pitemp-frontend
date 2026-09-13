@@ -295,10 +295,17 @@ def birds_add():
         notes = request.form.get("notes")
         
         from datetime import datetime
+        from flask import redirect
         date_sighted = datetime.strptime(date_sighted_str, "%Y-%m-%d")
         
+        # Check if bird already exists in life list
+        existing_entry = bird_dao.get_life_list_entry_by_bird_id(bird_id)
+        if existing_entry:
+            # Redirect to edit page for existing entry
+            return redirect(f"/birds/edit_entry/{existing_entry.id}")
+        
         bird_dao.add_to_life_list(bird_id, scientific_name, common_name, date_sighted, notes)
-        return "success"
+        return redirect("/birds")
     
     # GET request - show search form
     query = request.args.get("query", "")
@@ -306,17 +313,49 @@ def birds_add():
     if query:
         birds = bird_dao.search_birds(query)
     
-    return render_template("birds/add_bird.html", birds=birds, query=query)
+    # Get all bird_ids in life list for visual indicator
+    life_list = bird_dao.get_life_list()
+    life_list_bird_ids = {entry.bird_id for entry in life_list}
+    
+    return render_template("birds/add_bird.html", birds=birds, query=query, life_list_bird_ids=life_list_bird_ids)
 
 
 @HTML_BLUEPRINT.route("/birds/delete/<entry_id>", methods=["POST"])
 def birds_delete(entry_id):
+    from flask import redirect
     bird_dao = _get_birds_dao()
     if bird_dao is None:
-        return "error"
+        return redirect("/birds")
     
-    success = bird_dao.delete_from_life_list(entry_id)
-    return "success" if success else "error"
+    bird_dao.delete_from_life_list(entry_id)
+    return redirect("/birds")
+
+
+@HTML_BLUEPRINT.route("/birds/edit_entry/<entry_id>", methods=["GET", "POST"])
+def birds_edit_entry(entry_id):
+    from flask import redirect
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return redirect("/birds")
+    
+    if request.method == "POST":
+        date_sighted_str = request.form.get("date_sighted")
+        notes = request.form.get("notes")
+        
+        from datetime import datetime
+        date_sighted = datetime.strptime(date_sighted_str, "%Y-%m-%d")
+        
+        bird_dao.update_life_list_entry(entry_id, date_sighted, notes)
+        return redirect("/birds")
+    
+    # GET request - show edit form
+    life_list = bird_dao.get_life_list()
+    entry = next((e for e in life_list if e.id == entry_id), None)
+    
+    if entry is None:
+        return redirect("/birds")
+    
+    return render_template("birds/edit_entry.html", entry=entry)
 
 
 @HTML_BLUEPRINT.route("/birds/search")

@@ -179,3 +179,35 @@ class BirdDao:
             self.cache.set(cache_key, serialized_data, ex=BIRD_CACHE_TTL)
 
         return birds
+
+    def get_life_list_entry_by_bird_id(self, bird_id: str) -> LifeListEntry | None:
+        """Get a life list entry by bird_id"""
+        document = self.life_list_collection.find_one({"bird_id": bird_id})
+        if document:
+            return LifeListEntry(
+                id=str(document["_id"]),
+                bird_id=document.get("bird_id", ""),
+                scientific_name=document.get("scientific_name", ""),
+                common_name=document.get("common_name", ""),
+                date_sighted=document.get("date_sighted", datetime.now()),
+                notes=document.get("notes"),
+            )
+        return None
+
+    def update_life_list_entry(self, entry_id: str, date_sighted: datetime, notes: Optional[str] = None) -> bool:
+        """Update an existing life list entry"""
+        from bson import ObjectId
+        update_doc = {"date_sighted": date_sighted}
+        if notes is not None:
+            update_doc["notes"] = notes
+        
+        result = self.life_list_collection.update_one(
+            {"_id": ObjectId(entry_id)},
+            {"$set": update_doc}
+        )
+        
+        # Invalidate cache
+        if self.cache:
+            self.cache.delete("life_list")
+        
+        return result.modified_count > 0
