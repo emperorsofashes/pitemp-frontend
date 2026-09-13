@@ -21,6 +21,7 @@
     <table class="table table-striped table-dark">
         <thead>
             <tr>
+                <th>Image</th>
                 <th>Common Name</th>
                 <th>Scientific Name</th>
                 <th>Date Sighted</th>
@@ -33,6 +34,12 @@
         <tbody>
             {% for entry in life_list %}
             <tr>
+                <td>
+                    {% if entry.thumb_url %}
+                    <img src="{{ entry.thumb_url }}" alt="{{ entry.common_name }}" 
+                         loading="lazy" class="img-thumbnail" style="max-width: 200px; height: auto;">
+                    {% endif %}
+                </td>
                 <td>{{ entry.common_name }}</td>
                 <td><em>{{ entry.scientific_name }}</em></td>
                 <td>{{ entry.date_sighted.strftime('%Y-%m-%d') }}</td>

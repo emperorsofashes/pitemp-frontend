@@ -6,3 +6,4 @@ valkey[libvalkey]
 fakeredis
 Flask-Compress
 pytz
+requests

@@ -379,6 +379,37 @@ def birds_search():
     })
 
 
+@HTML_BLUEPRINT.route("/birds/image/<filename>")
+def birds_image(filename):
+    """Proxy bird images from R2 with aggressive caching headers"""
+    from flask import make_response
+    from application.constants.bird_constants import BIRD_IMAGE_HOST
+    import requests
+    
+    if not BIRD_IMAGE_HOST:
+        return "Image host not configured", 404
+    
+    image_url = f"{BIRD_IMAGE_HOST}/{filename}"
+    
+    try:
+        resp = requests.get(image_url, stream=True)
+        if resp.status_code != 200:
+            return "Image not found", 404
+        
+        # Create response with image data using make_response (more idiomatic Flask)
+        response = make_response(resp.content)
+        response.mimetype = resp.headers.get('Content-Type', 'image/avif')
+        
+        # Set aggressive caching headers (1 year)
+        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        response.headers['Expires'] = 'Fri, 31 Dec 9999 23:59:59 GMT'
+        
+        return response
+    except Exception as e:
+        LOG.error(f"Error fetching image from R2: {e}")
+        return "Error fetching image", 500
+
+
 def _get_page(days_back: int):
     dao = _get_dao()
 

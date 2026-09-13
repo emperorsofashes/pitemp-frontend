@@ -87,13 +87,25 @@ class BirdDao:
         entries = []
         
         for document in documents:
+            common_name = document.get("common_name", "")
+            # Generate image URLs using proxy route for caching control
+            from application.constants.bird_constants import BIRD_IMAGE_HOST
+            thumb_url = None
+            full_image_url = None
+            if BIRD_IMAGE_HOST:
+                species_name = document.get("scientific_name", "").lower().replace(" ", "_")
+                thumb_url = f"/birds/image/{species_name}_thumb.avif"
+                full_image_url = f"/birds/image/{species_name}.avif"
+            
             entry = LifeListEntry(
                 id=str(document["_id"]),
                 bird_id=document.get("bird_id", ""),
                 scientific_name=document.get("scientific_name", ""),
-                common_name=document.get("common_name", ""),
+                common_name=common_name,
                 date_sighted=document.get("date_sighted", datetime.now()),
                 notes=document.get("notes"),
+                thumb_url=thumb_url,
+                full_image_url=full_image_url,
             )
             entries.append(entry)
 

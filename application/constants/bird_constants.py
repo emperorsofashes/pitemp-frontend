@@ -1,3 +1,4 @@
+import os
 from datetime import timedelta
 
 # Database configuration
@@ -7,3 +8,6 @@ LIFE_LIST_COLLECTION_NAME = "life_list"
 
 # Cache TTL
 BIRD_CACHE_TTL = timedelta(hours=1)
+
+# Image hosting
+BIRD_IMAGE_HOST = os.environ.get("BIRD_IMAGE_HOST", "")
