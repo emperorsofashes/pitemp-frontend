@@ -80,6 +80,20 @@ class BirdDao:
         self._set_cached(cache_key, birds)
         return birds
 
+    def find_birds_by_inat_ids_or_names(self, inat_ids: list[int], scientific_names: list[str]) -> list[Bird]:
+        """Find matching birds in the database by iNat IDs or scientific names."""
+        clauses = []
+        if inat_ids:
+            clauses.append({"inat_id": {"$in": inat_ids}})
+        if scientific_names:
+            clauses.append({"scientific_name": {"$in": scientific_names}})
+
+        if not clauses:
+            return []
+
+        docs = self.birds_collection.find({"$or": clauses})
+        return [Bird.from_mongo(doc) for doc in docs]
+
     def get_life_list(self) -> list[LifeListEntry]:
         """Get all entries from the life list."""
         cache_key = "life_list"

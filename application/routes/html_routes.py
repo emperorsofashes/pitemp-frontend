@@ -317,6 +317,130 @@ def birds_add():
     )
 
 
+@HTML_BLUEPRINT.route("/birds/near_me")
+def birds_near_me():
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return render_template("birds/not_configured.html")
+
+    return render_template("birds/near_me.html")
+
+
+@HTML_BLUEPRINT.route("/birds/nearby_birds")
+def birds_nearby_api():
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return jsonify({"birds": [], "error": "Database not configured"}), 500
+
+    lat = request.args.get("lat", type=float)
+    lng = request.args.get("lng", type=float)
+    radius = request.args.get("radius", default=50, type=int)
+
+    if lat is None or lng is None:
+        return jsonify({"birds": [], "error": "lat and lng query parameters are required"}), 400
+
+    url = (
+        f"https://api.inaturalist.org/v1/observations/species_counts"
+        f"?lat={lat}&lng={lng}&radius={radius}&iconic_taxa=Aves"
+        f"&quality_grade=research&page=1&per_page=50"
+    )
+
+    try:
+        resp = requests.get(url, timeout=6)
+        if resp.status_code != 200:
+            return jsonify({"birds": [], "error": "Failed to fetch nearby observations"}), 502
+        inat_data = resp.json()
+    except Exception as e:
+        LOG.error(f"Error fetching nearby birds from iNaturalist: {e}")
+        return jsonify({"birds": [], "error": str(e)}), 500
+
+    results = inat_data.get("results", [])
+    if not results:
+        return jsonify({"birds": [], "total_results": 0})
+
+    inat_ids = [r["taxon"]["id"] for r in results if r.get("taxon") and r["taxon"].get("id")]
+    scientific_names = [r["taxon"]["name"] for r in results if r.get("taxon") and r["taxon"].get("name")]
+
+    db_birds = bird_dao.find_birds_by_inat_ids_or_names(inat_ids, scientific_names)
+    db_by_inat_id = {b.inat_id: b for b in db_birds if b.inat_id}
+    db_by_sci_name = {b.scientific_name.lower(): b for b in db_birds if b.scientific_name}
+
+    life_list = bird_dao.get_life_list()
+    life_list_by_bird_id = {entry.bird_id: entry for entry in life_list if entry.bird_id}
+    life_list_by_sci_name = {entry.scientific_name.lower(): entry for entry in life_list if entry.scientific_name}
+
+    output_birds = []
+    for item in results:
+        taxon = item.get("taxon") or {}
+        inat_id = taxon.get("id")
+        sci_name = taxon.get("name") or ""
+        common_name = taxon.get("preferred_common_name") or sci_name
+        count = item.get("count", 0)
+
+        # Match against our database
+        db_bird = db_by_inat_id.get(inat_id) or db_by_sci_name.get(sci_name.lower())
+        bird_id = db_bird.id if db_bird else None
+
+        # Check life list
+        entry = None
+        if bird_id and bird_id in life_list_by_bird_id:
+            entry = life_list_by_bird_id[bird_id]
+        elif sci_name.lower() in life_list_by_sci_name:
+            entry = life_list_by_sci_name[sci_name.lower()]
+
+        # Thumbnail URL
+        if db_bird and db_bird.thumb_url:
+            thumb_url = db_bird.thumb_url
+        elif taxon.get("default_photo") and taxon["default_photo"].get("square_url"):
+            thumb_url = taxon["default_photo"]["square_url"]
+        else:
+            thumb_url = None
+
+        output_birds.append({
+            "bird_id": bird_id,
+            "inat_id": inat_id,
+            "common_name": db_bird.common_name if db_bird else common_name,
+            "scientific_name": db_bird.scientific_name if db_bird else sci_name,
+            "count": count,
+            "thumb_url": thumb_url,
+            "on_life_list": entry is not None,
+            "life_list_entry_id": entry.id if entry else None,
+            "date_sighted": entry.date_sighted.strftime("%Y-%m-%d") if entry else None,
+        })
+
+    return jsonify({"birds": output_birds, "total_results": inat_data.get("total_results", len(output_birds))})
+
+
+@HTML_BLUEPRINT.route("/birds/api/add_sighting", methods=["POST"])
+def birds_api_add_sighting():
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return jsonify({"success": False, "error": "Database not configured"}), 500
+
+    data = request.get_json(silent=True) or request.form
+    bird_id = data.get("bird_id") or ""
+    scientific_name = data.get("scientific_name")
+    common_name = data.get("common_name")
+    date_sighted_str = data.get("date_sighted")
+    notes = data.get("notes") or None
+
+    if not scientific_name or not common_name or not date_sighted_str:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+    try:
+        date_sighted = datetime.strptime(date_sighted_str, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"success": False, "error": "Invalid date format, expected YYYY-MM-DD"}), 400
+
+    if bird_id:
+        existing = bird_dao.get_life_list_entry_by_bird_id(bird_id)
+        if existing:
+            return jsonify({"success": True, "entry_id": existing.id, "already_existed": True})
+
+    entry_id = bird_dao.add_to_life_list(bird_id, scientific_name, common_name, date_sighted, notes)
+    return jsonify({"success": True, "entry_id": entry_id, "already_existed": False})
+
+
 @HTML_BLUEPRINT.route("/birds/species/<bird_id>")
 def birds_species(bird_id):
     bird_dao = _get_birds_dao()

@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <title>Birds Near Me</title>
+    <style>
+        .bird-thumb-img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .bird-rank {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #adb5bd;
+            width: 40px;
+            text-align: center;
+        }
+        .count-badge {
+            font-size: 0.85rem;
+            background-color: #343a40;
+            border: 1px solid #495057;
+            color: #ffc107;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            white-space: nowrap;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="mb-0">Birds Near Me</h1>
+            <p class="text-muted mb-0">Discover the most commonly sighted bird species around your current location.</p>
+        </div>
+        <div>
+            <a href="/birds" class="btn btn-secondary">Life List</a>
+            <a href="/birds/add" class="btn btn-outline-light">Search All Birds</a>
+        </div>
+    </div>
+
+    <!-- Location Control Panel -->
+    <div class="card bg-dark text-white mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6 mb-2 mb-md-0">
+                    <div id="location-status" class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-info mr-2" role="status" id="location-spinner"></div>
+                        <span id="location-text">Requesting device location...</span>
+                    </div>
+                    <small id="coord-details" class="text-muted d-block mt-1"></small>
+                </div>
+                <div class="col-md-6 d-flex justify-content-md-end align-items-center flex-wrap">
+                    <div class="form-inline mr-3 mb-2 mb-sm-0">
+                        <label for="radius-select" class="mr-2 small text-muted">Radius:</label>
+                        <select id="radius-select" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            <option value="10">10 km (~6 mi)</option>
+                            <option value="25">25 km (~15 mi)</option>
+                            <option value="50" selected>50 km (~30 mi)</option>
+                            <option value="100">100 km (~60 mi)</option>
+                        </select>
+                    </div>
+                    <button id="btn-refresh-location" class="btn btn-outline-info btn-sm mr-2" title="Refresh Location">
+                        Refresh Location
+                    </button>
+                    <button id="btn-custom-coords" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#customLocationModal">
+                        Manual Coords
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="mt-3 pt-3 border-top border-secondary d-flex justify-content-between align-items-center flex-wrap">
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="filter-unseen">
+                    <label class="custom-control-label text-warning" for="filter-unseen">
+                        Hide species already on my Life List
+                    </label>
+                </div>
+                <div id="results-count" class="small text-muted mt-2 mt-sm-0"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Alert Container -->
+    <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
+
+    <!-- Species Table Card -->
+    <div class="card bg-dark text-white mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Most Common Nearby Species</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-dark table-hover mb-0" id="nearby-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 90px;">Photo</th>
+                            <th>Bird Species</th>
+                            <th>Local Frequency</th>
+                            <th style="width: 170px;" class="text-right">Life List Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nearby-table-body">
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <div class="spinner-border text-info mb-2" role="status"></div>
+                                <div>Detecting location and fetching nearby birds...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Sighting -->
+<div class="modal fade" id="addSightingModal" tabindex="-1" role="dialog" aria-labelledby="addSightingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="addSightingModalLabel">Add Sighting</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="add-sighting-form">
+                <div class="modal-body">
+                    <input type="hidden" id="modal-bird-id" name="bird_id">
+                    <input type="hidden" id="modal-sci-name" name="scientific_name">
+                    <input type="hidden" id="modal-common-name" name="common_name">
+
+                    <div class="form-group">
+                        <label class="font-weight-bold" id="modal-bird-title"></label>
+                        <div class="text-muted font-italic small" id="modal-bird-subtitle"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modal-date-sighted">Date Sighted *</label>
+                        <input type="date" class="form-control bg-dark text-white border-secondary"
+                               id="modal-date-sighted" name="date_sighted" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modal-notes">Notes (optional)</label>
+                        <textarea class="form-control bg-dark text-white border-secondary"
+                                  id="modal-notes" name="notes" rows="3" placeholder="Location details, weather, behavior, etc."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="btn-save-sighting">Save to Life List</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Custom Coordinates -->
+<div class="modal fade" id="customLocationModal" tabindex="-1" role="dialog" aria-labelledby="customLocationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="customLocationModalLabel">Set Custom Coordinates</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="custom-coords-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="custom-lat">Latitude</label>
+                        <input type="number" step="any" class="form-control bg-dark text-white border-secondary"
+                               id="custom-lat" required placeholder="e.g. 30.2672">
+                    </div>
+                    <div class="form-group">
+                        <label for="custom-lng">Longitude</label>
+                        <input type="number" step="any" class="form-control bg-dark text-white border-secondary"
+                               id="custom-lng" required placeholder="e.g. -97.7431">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">Load Coordinates</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- jQuery and Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentLat = null;
+    let currentLng = null;
+    let birdsData = [];
+
+    const locationSpinner = document.getElementById('location-spinner');
+    const locationText = document.getElementById('location-text');
+    const coordDetails = document.getElementById('coord-details');
+    const radiusSelect = document.getElementById('radius-select');
+    const filterUnseen = document.getElementById('filter-unseen');
+    const tableBody = document.getElementById('nearby-table-body');
+    const errorAlert = document.getElementById('error-alert');
+    const resultsCount = document.getElementById('results-count');
+
+    // Default today's date for sighting form
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('modal-date-sighted').value = today;
+
+    function showError(msg) {
+        errorAlert.textContent = msg;
+        errorAlert.classList.remove('d-none');
+    }
+
+    function clearError() {
+        errorAlert.textContent = '';
+        errorAlert.classList.add('d-none');
+    }
+
+    function requestLocation() {
+        clearError();
+        locationSpinner.classList.remove('d-none');
+        locationText.textContent = "Detecting device location...";
+        coordDetails.textContent = "";
+
+        if (!navigator.geolocation) {
+            locationSpinner.classList.add('d-none');
+            locationText.textContent = "Geolocation not supported by your browser.";
+            showError("Your browser doesn't support Geolocation. Please enter coordinates manually.");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            function(pos) {
+                currentLat = pos.coords.latitude;
+                currentLng = pos.coords.longitude;
+                locationSpinner.classList.add('d-none');
+                locationText.textContent = `Location detected (${currentLat.toFixed(4)}°, ${currentLng.toFixed(4)}°)`;
+                coordDetails.textContent = `Accuracy: within ±${Math.round(pos.coords.accuracy)} meters`;
+                fetchNearbyBirds();
+            },
+            function(err) {
+                locationSpinner.classList.add('d-none');
+                let errMessage = "Unable to retrieve your location.";
+                if (err.code === 1) {
+                    errMessage = "Location permission denied. Click 'Manual Coords' to enter your location.";
+                } else if (err.code === 2) {
+                    errMessage = "Position unavailable. Click 'Manual Coords' to enter your location.";
+                } else if (err.code === 3) {
+                    errMessage = "Location request timed out. Please try again or enter coords manually.";
+                }
+                locationText.textContent = errMessage;
+                showError(errMessage);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                            Location access is required to show nearby birds. Click <strong>Manual Coords</strong> above to enter a location.
+                        </td>
+                    </tr>
+                `;
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
+    }
+
+    function fetchNearbyBirds() {
+        if (currentLat === null || currentLng === null) return;
+
+        clearError();
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-5 text-muted">
+                    <div class="spinner-border text-info mb-2" role="status"></div>
+                    <div>Fetching nearby bird observations...</div>
+                </td>
+            </tr>
+        `;
+
+        const radius = radiusSelect.value;
+        const url = `/birds/nearby_birds?lat=${encodeURIComponent(currentLat)}&lng=${encodeURIComponent(currentLng)}&radius=${radius}`;
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    showError("Error: " + data.error);
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">${data.error}</td></tr>`;
+                    return;
+                }
+                birdsData = data.birds || [];
+                renderTable();
+            })
+            .catch(err => {
+                showError("Network error while fetching nearby species.");
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load nearby species.</td></tr>`;
+            });
+    }
+
+    function renderTable() {
+        const hideUnseen = filterUnseen.checked;
+        const filtered = hideUnseen ? birdsData.filter(b => !b.on_life_list) : birdsData;
+
+        resultsCount.textContent = `Showing ${filtered.length} of ${birdsData.length} species`;
+
+        if (filtered.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        ${hideUnseen ? 'All nearby species are already on your life list!' : 'No bird sightings found in this radius.'}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        let html = '';
+        filtered.forEach((bird, idx) => {
+            const rank = idx + 1;
+            const thumbImg = bird.thumb_url
+                ? `<img src="${bird.thumb_url}" alt="${bird.common_name}" class="bird-thumb-img" loading="lazy">`
+                : `<div class="bg-secondary text-muted d-flex align-items-center justify-content-center bird-thumb-img small">No photo</div>`;
+
+            const nameLink = bird.bird_id
+                ? `<a href="/birds/species/${bird.bird_id}" class="text-white font-weight-bold" style="font-size: 1.05rem;">${bird.common_name}</a>`
+                : `<span class="text-white font-weight-bold" style="font-size: 1.05rem;">${bird.common_name}</span>`;
+
+            let actionCol = '';
+            if (bird.on_life_list) {
+                const dateText = bird.date_sighted ? ` (${bird.date_sighted})` : '';
+                actionCol = `<span class="badge badge-success px-2 py-1"><i class="fas fa-check mr-1"></i>✓ On Life List${dateText}</span>`;
+            } else {
+                actionCol = `
+                    <button class="btn btn-success btn-sm btn-add-sighting"
+                            data-bird-id="${bird.bird_id || ''}"
+                            data-sci-name="${bird.scientific_name}"
+                            data-common-name="${bird.common_name}">
+                        + Add Sighting
+                    </button>
+                `;
+            }
+
+            html += `
+                <tr id="row-bird-${bird.scientific_name.replace(/\s+/g, '-')}">
+                    <td class="align-middle bird-rank">${rank}</td>
+                    <td class="align-middle p-2">${thumbImg}</td>
+                    <td class="align-middle">
+                        <div>${nameLink}</div>
+                        <div class="text-muted font-italic small"><em>${bird.scientific_name}</em></div>
+                    </td>
+                    <td class="align-middle">
+                        <span class="count-badge">${bird.count.toLocaleString()} observations</span>
+                    </td>
+                    <td class="align-middle text-right">${actionCol}</td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+        attachAddButtons();
+    }
+
+    function attachAddButtons() {
+        document.querySelectorAll('.btn-add-sighting').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const birdId = this.dataset.birdId;
+                const sciName = this.dataset.sciName;
+                const commonName = this.dataset.commonName;
+
+                document.getElementById('modal-bird-id').value = birdId;
+                document.getElementById('modal-sci-name').value = sciName;
+                document.getElementById('modal-common-name').value = commonName;
+                document.getElementById('modal-bird-title').textContent = commonName;
+                document.getElementById('modal-bird-subtitle').textContent = sciName;
+                document.getElementById('modal-notes').value = '';
+
+                $('#addSightingModal').modal('show');
+            });
+        });
+    }
+
+    // Handle modal form submission
+    document.getElementById('add-sighting-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const submitBtn = document.getElementById('btn-save-sighting');
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Saving...";
+
+        const payload = {
+            bird_id: document.getElementById('modal-bird-id').value,
+            scientific_name: document.getElementById('modal-sci-name').value,
+            common_name: document.getElementById('modal-common-name').value,
+            date_sighted: document.getElementById('modal-date-sighted').value,
+            notes: document.getElementById('modal-notes').value
+        };
+
+        fetch('/birds/api/add_sighting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Save to Life List";
+            if (data.success) {
+                $('#addSightingModal').modal('hide');
+                // Update local birdsData state
+                const matched = birdsData.find(b => b.scientific_name === payload.scientific_name);
+                if (matched) {
+                    matched.on_life_list = true;
+                    matched.date_sighted = payload.date_sighted;
+                }
+                renderTable();
+            } else {
+                alert("Error adding sighting: " + (data.error || "Unknown error"));
+            }
+        })
+        .catch(err => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Save to Life List";
+            alert("Network error occurred while saving sighting.");
+        });
+    });
+
+    // Custom coordinates form
+    document.getElementById('custom-coords-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const lat = parseFloat(document.getElementById('custom-lat').value);
+        const lng = parseFloat(document.getElementById('custom-lng').value);
+        if (!isNaN(lat) && !isNaN(lng)) {
+            currentLat = lat;
+            currentLng = lng;
+            locationText.textContent = `Custom coordinates (${currentLat.toFixed(4)}°, ${currentLng.toFixed(4)}°)`;
+            coordDetails.textContent = "";
+            $('#customLocationModal').modal('hide');
+            fetchNearbyBirds();
+        }
+    });
+
+    // Event listeners
+    document.getElementById('btn-refresh-location').addEventListener('click', requestLocation);
+    radiusSelect.addEventListener('change', fetchNearbyBirds);
+    filterUnseen.addEventListener('change', renderTable);
+
+    // Initial load
+    requestLocation();
+});
+</script>
+{% endblock %}
