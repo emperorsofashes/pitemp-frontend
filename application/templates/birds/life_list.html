@@ -9,7 +9,7 @@
 <div class="container mt-4">
     <h1>Bird Life List</h1>
 
-    <div class="mb-3">
+    <div class="mb-3 d-flex align-items-center">
         {% if edit_mode %}
             <a href="/birds?sort_by={{ sort_by }}" class="btn btn-secondary mr-2">Exit Edit Mode</a>
         {% else %}
@@ -18,14 +18,16 @@
         <a href="/birds/add" class="btn btn-success mr-2">Add Bird</a>
         <a href="/birds/near_me" class="btn btn-info mr-2">Add Bird Near Me</a>
         
-        <div class="d-inline-block">
+        <div class="d-inline-block ml-2">
             <select id="sort-select" class="form-control d-inline-block" style="width: auto; display: inline-block;">
-                <option value="date_added_desc" {% if sort_by == 'date_added_desc' %}selected{% endif %}>Newly Added First</option>
-                <option value="date_added_asc" {% if sort_by == 'date_added_asc' %}selected{% endif %}>Oldest Added First</option>
-                <option value="date_sighted_desc" {% if sort_by == 'date_sighted_desc' %}selected{% endif %}>Most Recent Sighting</option>
-                <option value="date_sighted_asc" {% if sort_by == 'date_sighted_asc' %}selected{% endif %}>Oldest Sighting</option>
-                <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
-                <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+                <option value="date_added_desc" selected>Newly Added First</option>
+                <option value="date_added_asc">Oldest Added First</option>
+                <option value="date_sighted_desc">Most Recent Sighting</option>
+                <option value="date_sighted_asc">Oldest Sighting</option>
+                <option value="common_name_asc">Common Name (A-Z)</option>
+                <option value="common_name_desc">Common Name (Z-A)</option>
+                <option value="scientific_name_asc">Scientific Name (A-Z)</option>
+                <option value="scientific_name_desc">Scientific Name (Z-A)</option>
             </select>
         </div>
     </div>
@@ -46,7 +48,7 @@
         </thead>
         <tbody id="life-list-body">
             {% for entry in life_list %}
-            <tr data-id="{{ entry.id }}" data-common-name="{{ entry.common_name }}" data-date-sighted="{{ entry.date_sighted.strftime('%Y-%m-%d') }}">
+            <tr data-id="{{ entry.id }}" data-common-name="{{ entry.common_name }}" data-scientific-name="{{ entry.scientific_name }}" data-date-sighted="{{ entry.date_sighted.strftime('%Y-%m-%d') }}">
                 <td>
                     {% if entry.thumb_url %}
                         {% if entry.bird_id %}
@@ -90,6 +92,11 @@
 </div>
 
 <script>
+// Reset dropdown to default on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('sort-select').value = 'date_added_desc';
+});
+
 document.getElementById('sort-select').addEventListener('change', function() {
     const sortValue = this.value;
     const tbody = document.getElementById('life-list-body');
@@ -98,12 +105,16 @@ document.getElementById('sort-select').addEventListener('change', function() {
     rows.sort(function(a, b) {
         const aId = a.dataset.id;
         const bId = b.dataset.id;
-        const aName = a.dataset.commonName.toLowerCase();
-        const bName = b.dataset.commonName.toLowerCase();
+        const aCommonName = a.dataset.commonName.toLowerCase();
+        const bCommonName = b.dataset.commonName.toLowerCase();
+        const aScientificName = a.dataset.scientificName.toLowerCase();
+        const bScientificName = b.dataset.scientificName.toLowerCase();
         const aDateStr = a.dataset.dateSighted;
         const bDateStr = b.dataset.dateSighted;
-        const aDate = aDateStr ? new Date(aDateStr) : new Date(0);
-        const bDate = bDateStr ? new Date(bDateStr) : new Date(0);
+        
+        // Parse dates - YYYY-MM-DD format from template
+        const aDate = aDateStr ? new Date(aDateStr + 'T00:00:00') : new Date(0);
+        const bDate = bDateStr ? new Date(bDateStr + 'T00:00:00') : new Date(0);
         
         switch(sortValue) {
             case 'date_added_desc':
@@ -120,10 +131,14 @@ document.getElementById('sort-select').addEventListener('change', function() {
                     return aId.localeCompare(bId);
                 }
                 return aDate.getTime() - bDate.getTime();
-            case 'name_asc':
-                return aName.localeCompare(bName);
-            case 'name_desc':
-                return bName.localeCompare(aName);
+            case 'common_name_asc':
+                return aCommonName.localeCompare(bCommonName);
+            case 'common_name_desc':
+                return bCommonName.localeCompare(aCommonName);
+            case 'scientific_name_asc':
+                return aScientificName.localeCompare(bScientificName);
+            case 'scientific_name_desc':
+                return bScientificName.localeCompare(aScientificName);
             default:
                 return 0;
         }
