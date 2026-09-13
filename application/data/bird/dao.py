@@ -27,6 +27,9 @@ class BirdDao:
         self.birds_collection: Collection = self.database[BIRDS_COLLECTION_NAME]
         self.life_list_collection: Collection = self.database[LIFE_LIST_COLLECTION_NAME]
 
+        # Create unique index on scientific_name to ensure one document per species
+        self.life_list_collection.create_index([("scientific_name", 1)], unique=True)
+
         LOG.info(f"Connected to database: {BIRD_DB_NAME}")
 
     def _get_cached(self, key: str) -> Any | None:

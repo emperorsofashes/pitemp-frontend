@@ -22,8 +22,6 @@
             <select id="sort-select" class="form-control d-inline-block" style="width: auto; display: inline-block;">
                 <option value="date_added_desc" selected>Newly Added First</option>
                 <option value="date_added_asc">Oldest Added First</option>
-                <option value="date_sighted_desc">Most Recent Sighting</option>
-                <option value="date_sighted_asc">Oldest Sighting</option>
                 <option value="common_name_asc">Common Name (A-Z)</option>
                 <option value="common_name_desc">Common Name (Z-A)</option>
                 <option value="scientific_name_asc">Scientific Name (A-Z)</option>
@@ -48,7 +46,7 @@
         </thead>
         <tbody id="life-list-body">
             {% for entry in life_list %}
-            <tr data-id="{{ entry.id }}" data-common-name="{{ entry.common_name }}" data-scientific-name="{{ entry.scientific_name }}" data-date-sighted="{{ entry.date_sighted.strftime('%Y-%m-%d') }}">
+            <tr data-id="{{ entry.id }}" data-common-name="{{ entry.common_name }}" data-scientific-name="{{ entry.scientific_name }}">
                 <td>
                     {% if entry.thumb_url %}
                         {% if entry.bird_id %}
@@ -109,28 +107,12 @@ document.getElementById('sort-select').addEventListener('change', function() {
         const bCommonName = b.dataset.commonName.toLowerCase();
         const aScientificName = a.dataset.scientificName.toLowerCase();
         const bScientificName = b.dataset.scientificName.toLowerCase();
-        const aDateStr = a.dataset.dateSighted;
-        const bDateStr = b.dataset.dateSighted;
-        
-        // Parse dates - YYYY-MM-DD format from template
-        const aDate = aDateStr ? new Date(aDateStr + 'T00:00:00') : new Date(0);
-        const bDate = bDateStr ? new Date(bDateStr + 'T00:00:00') : new Date(0);
         
         switch(sortValue) {
             case 'date_added_desc':
                 return bId.localeCompare(aId);
             case 'date_added_asc':
                 return aId.localeCompare(bId);
-            case 'date_sighted_desc':
-                if (isNaN(aDate.getTime()) || isNaN(bDate.getTime())) {
-                    return bId.localeCompare(aId);
-                }
-                return bDate.getTime() - aDate.getTime();
-            case 'date_sighted_asc':
-                if (isNaN(aDate.getTime()) || isNaN(bDate.getTime())) {
-                    return aId.localeCompare(bId);
-                }
-                return aDate.getTime() - bDate.getTime();
             case 'common_name_asc':
                 return aCommonName.localeCompare(bCommonName);
             case 'common_name_desc':
