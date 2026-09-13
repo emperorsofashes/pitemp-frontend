@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <title>Add Bird to Life List</title>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Add Bird to Life List</h1>
+    
+    <a href="/birds" class="btn btn-secondary mb-3">Back to Life List</a>
+    
+    <div class="card bg-dark text-white">
+        <div class="card-body">
+            <h5 class="card-title">Search for a Bird</h5>
+            <form action="/birds/add" method="GET" class="mb-3">
+                <div class="form-group">
+                    <input type="text" name="query" class="form-control" 
+                           placeholder="Search by common name or scientific name" 
+                           value="{{ query }}">
+                </div>
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+            
+            {% if birds %}
+            <h5 class="card-title mt-4">Results</h5>
+            <table class="table table-striped table-dark">
+                <thead>
+                    <tr>
+                        <th>Common Name</th>
+                        <th>Scientific Name</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bird in birds %}
+                    <tr>
+                        <td>{{ bird.common_name }}</td>
+                        <td><em>{{ bird.scientific_name }}</em></td>
+                        <td>
+                            <button onclick="showAddForm('{{ bird.id }}', '{{ bird.scientific_name }}', '{{ bird.common_name }}')" 
+                                    class="btn btn-success btn-sm">Add to List</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% elif query %}
+            <p>No birds found matching "{{ query }}".</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Hidden form for adding bird -->
+    <div id="addFormContainer" style="display: none;" class="mt-4">
+        <div class="card bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title">Add {{ common_name }} to Life List</h5>
+                <form action="/birds/add" method="POST">
+                    <input type="hidden" name="bird_id" id="bird_id">
+                    <input type="hidden" name="scientific_name" id="scientific_name">
+                    <input type="hidden" name="common_name" id="common_name">
+                    
+                    <div class="form-group">
+                        <label for="date_sighted">Date Sighted:</label>
+                        <input type="date" name="date_sighted" id="date_sighted" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">Notes (optional):</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">Add to Life List</button>
+                    <button type="button" onclick="hideAddForm()" class="btn btn-secondary">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showAddForm(birdId, scientificName, commonName) {
+    document.getElementById('bird_id').value = birdId;
+    document.getElementById('scientific_name').value = scientificName;
+    document.getElementById('common_name').value = commonName;
+    document.getElementById('addFormContainer').style.display = 'block';
+    document.getElementById('date_sighted').valueAsDate = new Date();
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+function hideAddForm() {
+    document.getElementById('addFormContainer').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -10,8 +10,10 @@ from application.constants.app_constants import (
     DATABASE_CONFIG_KEY,
     BEERS_DATABASE_CONFIG_KEY,
     DISKS_DATABASE_CONFIG_KEY,
+    BIRDS_DATABASE_CONFIG_KEY,
 )
 from application.data.beer.dao import BeerDao
+from application.data.bird.dao import BirdDao
 from application.data.custom_json_encoder import CustomJsonEncoder
 from application.data.temperature.dao import ApplicationDao
 from application.data.disks.dao import DisksDao
@@ -65,6 +67,18 @@ def create_flask_app() -> Flask:
 
     disks_dao = DisksDao(client=client, cache=cache)
     app.config[DISKS_DATABASE_CONFIG_KEY] = disks_dao
+
+    # Initialize bird DAO with separate credentials
+    bird_username = os.environ.get("MONGO_BIRD_USER")
+    bird_password = os.environ.get("MONGO_BIRD_PASSWORD")
+    if bird_username and bird_password:
+        bird_client = MongoClient(f"mongodb+srv://{bird_username}:{bird_password}@{host}/?retryWrites=true&w=majority")
+        bird_dao = BirdDao(client=bird_client, cache=cache)
+        app.config[BIRDS_DATABASE_CONFIG_KEY] = bird_dao
+        LOG.info("Bird DAO initialized with separate credentials")
+    else:
+        LOG.warning("MONGO_BIRD_USER or MONGO_BIRD_PASSWORD not set, bird functionality will not be available")
+        app.config[BIRDS_DATABASE_CONFIG_KEY] = None
 
     # This must be set in the environment as a secret
     app.secret_key = os.environ["SECRET_KEY"]

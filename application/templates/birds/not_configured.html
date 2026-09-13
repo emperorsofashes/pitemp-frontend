@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <title>Bird Life List - Not Configured</title>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="alert alert-warning">
+        <h1>Bird Life List Not Configured</h1>
+        <p>The bird life list feature requires MONGO_BIRD_USER and MONGO_BIRD_PASSWORD environment variables to be set.</p>
+        <p>Please set these environment variables and restart the application to use the bird life list feature.</p>
+    </div>
+</div>
+{% endblock %}

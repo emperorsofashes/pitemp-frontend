@@ -6,10 +6,12 @@ from application import DisksDao, DISKS_DATABASE_CONFIG_KEY
 from application.constants.app_constants import (
     DATABASE_CONFIG_KEY,
     BEERS_DATABASE_CONFIG_KEY,
+    BIRDS_DATABASE_CONFIG_KEY,
     DATETIME_FORMAT_STRING,
 )
 from application.constants.beer_constants import ROWDY_USERNAME, BEER_STYLES_V1, BEER_STYLES_V2
 from application.data.beer.dao import BeerDao
+from application.data.bird.dao import BirdDao
 from application.data.temperature.dao import ApplicationDao
 
 LOG = logging.getLogger(__name__)
@@ -259,6 +261,85 @@ def books_runs():
     return render_template("games/books_runs.html")
 
 
+@HTML_BLUEPRINT.route("/birds")
+def birds_index():
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return render_template("birds/not_configured.html")
+    
+    life_list = bird_dao.get_life_list()
+    return render_template("birds/life_list.html", life_list=life_list, edit_mode=False)
+
+
+@HTML_BLUEPRINT.route("/birds/edit")
+def birds_edit():
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return render_template("birds/not_configured.html")
+    
+    life_list = bird_dao.get_life_list()
+    return render_template("birds/life_list.html", life_list=life_list, edit_mode=True)
+
+
+@HTML_BLUEPRINT.route("/birds/add", methods=["GET", "POST"])
+def birds_add():
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return render_template("birds/not_configured.html")
+    
+    if request.method == "POST":
+        bird_id = request.form.get("bird_id")
+        scientific_name = request.form.get("scientific_name")
+        common_name = request.form.get("common_name")
+        date_sighted_str = request.form.get("date_sighted")
+        notes = request.form.get("notes")
+        
+        from datetime import datetime
+        date_sighted = datetime.strptime(date_sighted_str, "%Y-%m-%d")
+        
+        bird_dao.add_to_life_list(bird_id, scientific_name, common_name, date_sighted, notes)
+        return "success"
+    
+    # GET request - show search form
+    query = request.args.get("query", "")
+    birds = []
+    if query:
+        birds = bird_dao.search_birds(query)
+    
+    return render_template("birds/add_bird.html", birds=birds, query=query)
+
+
+@HTML_BLUEPRINT.route("/birds/delete/<entry_id>", methods=["POST"])
+def birds_delete(entry_id):
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return "error"
+    
+    success = bird_dao.delete_from_life_list(entry_id)
+    return "success" if success else "error"
+
+
+@HTML_BLUEPRINT.route("/birds/search")
+def birds_search():
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return jsonify({"birds": []})
+    
+    query = request.args.get("query", "")
+    birds = bird_dao.search_birds(query)
+    
+    return jsonify({
+        "birds": [
+            {
+                "id": bird.id,
+                "scientific_name": bird.scientific_name,
+                "common_name": bird.common_name,
+            }
+            for bird in birds
+        ]
+    })
+
+
 def _get_page(days_back: int):
     dao = _get_dao()
 
@@ -293,3 +374,7 @@ def _get_beers_dao() -> BeerDao:
 
 def _get_disks_dao() -> DisksDao:
     return current_app.config[DISKS_DATABASE_CONFIG_KEY]
+
+
+def _get_birds_dao() -> BirdDao | None:
+    return current_app.config.get(BIRDS_DATABASE_CONFIG_KEY)
