@@ -294,51 +294,82 @@ document.addEventListener('DOMContentLoaded', function() {
 
     L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
-    // Auto-fit bounds for regional / endemic species
-    if (gbifId) {
-        fetch(`https://api.gbif.org/v1/occurrence/search?taxonKey=${gbifId}&hasCoordinate=true&limit=100`)
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-                if (data && data.results && data.results.length > 0) {
-                    const lats = data.results.map(r => r.decimalLatitude).filter(v => v !== undefined && v !== null);
-                    const lngs = data.results.map(r => r.decimalLongitude).filter(v => v !== undefined && v !== null);
-                    if (lats.length > 0 && lngs.length > 0) {
-                        const bounds = [
-                            [Math.min(...lats), Math.min(...lngs)],
-                            [Math.max(...lats), Math.max(...lngs)]
-                        ];
-                        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
-                        if (statusEl) {
-                            const total = data.count ? data.count.toLocaleString() : data.results.length;
-                            statusEl.textContent = `Auto-framed from ${total} observations`;
+    // Client-side LocalStorage bounds caching (30-day expiration, 0 Redis memory used)
+    const cacheKey = 'bird_bounds_' + (gbifId || inatId);
+    const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    function applyBounds(bounds, sourceName) {
+        if (bounds && bounds.length === 2) {
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
+            if (statusEl) statusEl.textContent = "Framed to distribution range";
+        }
+    }
+
+    function saveBoundsToCache(bounds) {
+        try {
+            localStorage.setItem(cacheKey, JSON.stringify({
+                bounds: bounds,
+                timestamp: Date.now()
+            }));
+        } catch (e) {}
+    }
+
+    function getCachedBounds() {
+        try {
+            const raw = localStorage.getItem(cacheKey);
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (data && data.bounds && (Date.now() - data.timestamp < CACHE_TTL_MS)) {
+                return data.bounds;
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    const cachedBounds = getCachedBounds();
+    if (cachedBounds) {
+        applyBounds(cachedBounds, "cache");
+    } else {
+        if (gbifId) {
+            fetch(`https://api.gbif.org/v1/occurrence/search?taxonKey=${gbifId}&hasCoordinate=true&limit=100`)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data && data.results && data.results.length > 0) {
+                        const lats = data.results.map(r => r.decimalLatitude).filter(v => v !== undefined && v !== null);
+                        const lngs = data.results.map(r => r.decimalLongitude).filter(v => v !== undefined && v !== null);
+                        if (lats.length > 0 && lngs.length > 0) {
+                            const bounds = [
+                                [Math.min(...lats), Math.min(...lngs)],
+                                [Math.max(...lats), Math.max(...lngs)]
+                            ];
+                            applyBounds(bounds, "gbif");
+                            saveBoundsToCache(bounds);
                         }
                     }
-                }
-            })
-            .catch(() => {});
-    } else if (inatId) {
-        fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${inatId}&per_page=100`)
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-                if (data && data.results && data.results.length > 0) {
-                    const coords = data.results
-                        .map(r => r.location ? r.location.split(',').map(Number) : null)
-                        .filter(c => c && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
-                    if (coords.length > 0) {
-                        const lats = coords.map(c => c[0]);
-                        const lngs = coords.map(c => c[1]);
-                        const bounds = [
-                            [Math.min(...lats), Math.min(...lngs)],
-                            [Math.max(...lats), Math.max(...lngs)]
-                        ];
-                        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
-                        if (statusEl) {
-                            statusEl.textContent = `Auto-framed from ${data.total_results || coords.length} observations`;
+                })
+                .catch(() => {});
+        } else if (inatId) {
+            fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${inatId}&per_page=100`)
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data && data.results && data.results.length > 0) {
+                        const coords = data.results
+                            .map(r => r.location ? r.location.split(',').map(Number) : null)
+                            .filter(c => c && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
+                        if (coords.length > 0) {
+                            const lats = coords.map(c => c[0]);
+                            const lngs = coords.map(c => c[1]);
+                            const bounds = [
+                                [Math.min(...lats), Math.min(...lngs)],
+                                [Math.max(...lats), Math.max(...lngs)]
+                            ];
+                            applyBounds(bounds, "inat");
+                            saveBoundsToCache(bounds);
                         }
                     }
-                }
-            })
-            .catch(() => {});
+                })
+                .catch(() => {});
+        }
     }
 });
 </script>
