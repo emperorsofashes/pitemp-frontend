@@ -38,12 +38,14 @@
                     <tr>
                         <td>
                             {% if bird.thumb_url %}
-                            <img src="{{ bird.thumb_url }}" alt="{{ bird.common_name }}"
-                                 loading="lazy" class="img-thumbnail" style="max-width: 150px; height: auto;">
+                            <a href="/birds/species/{{ bird.id }}">
+                                <img src="{{ bird.thumb_url }}" alt="{{ bird.common_name }}"
+                                     loading="lazy" class="img-thumbnail" style="max-width: 150px; height: auto;">
+                            </a>
                             {% endif %}
                         </td>
                         <td>
-                            {{ bird.common_name }}
+                            <a href="/birds/species/{{ bird.id }}" class="text-white font-weight-bold">{{ bird.common_name }}</a>
                             {% if bird.id in life_list_by_bird_id %}
                             <span class="text-success" title="Already on life list">✓</span>
                             {% endif %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <title>{{ bird.common_name }} ({{ bird.scientific_name }})</title>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="mb-0">{{ bird.common_name }}</h1>
+            <p class="text-muted font-italic mb-0" style="font-size: 1.25rem;"><em>{{ bird.scientific_name }}</em></p>
+        </div>
+        <div>
+            <a href="/birds" class="btn btn-secondary">Back to Life List</a>
+            <a href="/birds/add" class="btn btn-outline-light">Search Birds</a>
+        </div>
+    </div>
+
+    <!-- Sighting Status Card -->
+    {% if life_list_entry %}
+    <div class="alert alert-success d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <strong>✓ On Your Life List!</strong> Sighted on <strong>{{ life_list_entry.date_sighted.strftime('%Y-%m-%d') }}</strong>
+            {% if life_list_entry.notes %}
+            <br><small><strong>Notes:</strong> {{ life_list_entry.notes }}</small>
+            {% endif %}
+        </div>
+        <a href="/birds/edit_entry/{{ life_list_entry.id }}" class="btn btn-warning btn-sm">Edit Sighting</a>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Full Image Column -->
+        <div class="col-md-6 mb-4">
+            <div class="card bg-dark text-white h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Photo</h5>
+                </div>
+                <div class="card-body text-center d-flex align-items-center justify-content-center p-3">
+                    {% if bird.full_image_url %}
+                    <img src="{{ bird.full_image_url }}" alt="{{ bird.common_name }}"
+                         class="img-fluid rounded shadow" style="max-height: 500px; width: 100%; object-fit: contain;">
+                    {% else %}
+                    <p class="text-muted">No image available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Fields / Metadata Column -->
+        <div class="col-md-6 mb-4">
+            <!-- Taxonomy Card -->
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Taxonomy</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-dark table-striped mb-0">
+                        <tbody>
+                            <tr>
+                                <th scope="row" style="width: 35%;">Group</th>
+                                <td>{{ bird.group or '—' }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Order</th>
+                                <td>{{ bird.order or '—' }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Family</th>
+                                <td>{{ bird.family or '—' }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Genus</th>
+                                <td>{{ bird.genus or '—' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Identifiers & External References -->
+            <div class="card bg-dark text-white">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Database & Identifiers</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-dark table-striped mb-0">
+                        <tbody>
+                            <tr>
+                                <th scope="row" style="width: 35%;">Database ID</th>
+                                <td><code>{{ bird.id }}</code></td>
+                            </tr>
+                            <tr>
+                                <th scope="row">BirdNET ID</th>
+                                <td>{{ bird.birdnet_id or '—' }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">eBird ID</th>
+                                <td>
+                                    {% if bird.ebird_id %}
+                                    <a href="https://ebird.org/species/{{ bird.ebird_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.ebird_id }}</a>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">iNaturalist ID</th>
+                                <td>
+                                    {% if bird.inat_id %}
+                                    <a href="https://www.inaturalist.org/taxa/{{ bird.inat_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.inat_id }}</a>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">GBIF ID</th>
+                                <td>
+                                    {% if bird.gbif_id %}
+                                    <a href="https://www.gbif.org/species/{{ bird.gbif_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.gbif_id }}</a>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Avibase ID</th>
+                                <td>
+                                    {% if bird.avibase_id %}
+                                    <a href="https://avibase.bsc-eoc.org/species.jsp?avibaseid={{ bird.avibase_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.avibase_id }}</a>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">BirdLife ID</th>
+                                <td>{{ bird.birdlife_id or '—' }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">NCBI Taxon ID</th>
+                                <td>
+                                    {% if bird.ncbi_id %}
+                                    <a href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={{ bird.ncbi_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.ncbi_id }}</a>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Updated At</th>
+                                <td>{{ bird.updated_at.strftime('%Y-%m-%d %H:%M:%S') if bird.updated_at else '—' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

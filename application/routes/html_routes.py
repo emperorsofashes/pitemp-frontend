@@ -317,6 +317,20 @@ def birds_add():
     )
 
 
+@HTML_BLUEPRINT.route("/birds/species/<bird_id>")
+def birds_species(bird_id):
+    bird_dao = _get_birds_dao()
+    if bird_dao is None:
+        return render_template("birds/not_configured.html")
+
+    bird = bird_dao.get_bird(bird_id)
+    if bird is None:
+        return redirect("/birds")
+
+    life_list_entry = bird_dao.get_life_list_entry_by_bird_id(bird_id)
+    return render_template("birds/species.html", bird=bird, life_list_entry=life_list_entry)
+
+
 @HTML_BLUEPRINT.route("/birds/delete/<entry_id>", methods=["POST"])
 def birds_delete(entry_id):
     bird_dao = _get_birds_dao()

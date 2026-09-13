@@ -47,6 +47,22 @@ class BirdDao:
         self._set_cached(cache_key, birds)
         return birds
 
+    def get_bird(self, bird_id: str) -> Bird | None:
+        """Get a bird species by its MongoDB _id."""
+        cache_key = f"bird_{bird_id}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            doc = self.birds_collection.find_one({"_id": ObjectId(bird_id)})
+            bird = Bird.from_mongo(doc) if doc else None
+            if bird:
+                self._set_cached(cache_key, bird)
+            return bird
+        except Exception:
+            return None
+
     def search_birds(self, query: str) -> list[Bird]:
         """Search birds by common name or scientific name."""
         cache_key = f"bird_search_{query}"
