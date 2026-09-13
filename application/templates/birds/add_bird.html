@@ -27,6 +27,7 @@
             <table class="table table-striped table-dark">
                 <thead>
                     <tr>
+                        <th>Image</th>
                         <th>Common Name</th>
                         <th>Scientific Name</th>
                         <th>Action</th>
@@ -35,6 +36,12 @@
                 <tbody>
                     {% for bird in birds %}
                     <tr>
+                        <td>
+                            {% if bird.thumb_url %}
+                            <img src="{{ bird.thumb_url }}" alt="{{ bird.common_name }}"
+                                 loading="lazy" class="img-thumbnail" style="max-width: 150px; height: auto;">
+                            {% endif %}
+                        </td>
                         <td>
                             {{ bird.common_name }}
                             {% if bird.id in life_list_by_bird_id %}
