@@ -12,7 +12,7 @@ from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
 )
 from application.constants.beer_constants import BEER_STYLES_V1, BEER_STYLES_V2, ROWDY_USERNAME
-from application.constants.bird_constants import BIRD_IMAGE_HOST
+from application.constants.bird_constants import BIRD_IMAGE_HOST, CARTO_API_KEY
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.temperature.dao import ApplicationDao
@@ -328,7 +328,12 @@ def birds_species(bird_id):
         return redirect("/birds")
 
     life_list_entry = bird_dao.get_life_list_entry_by_bird_id(bird_id)
-    return render_template("birds/species.html", bird=bird, life_list_entry=life_list_entry)
+    return render_template(
+        "birds/species.html",
+        bird=bird,
+        life_list_entry=life_list_entry,
+        carto_api_key=CARTO_API_KEY,
+    )
 
 
 @HTML_BLUEPRINT.route("/birds/delete/<entry_id>", methods=["POST"])
