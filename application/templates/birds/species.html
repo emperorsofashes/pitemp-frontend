@@ -28,7 +28,7 @@
             <p class="text-muted font-italic mb-0" style="font-size: 1.25rem;"><em>{{ bird.scientific_name }}</em></p>
         </div>
         <div>
-            <a href="/birds" class="btn btn-secondary">Back to Life List</a>
+            <a href="/birds" class="btn btn-secondary mr-2">Back to Life List</a>
             <a href="/birds/add" class="btn btn-outline-light">Search Birds</a>
         </div>
     </div>
@@ -82,11 +82,7 @@
                     <table class="table table-dark table-striped mb-0">
                         <tbody>
                             <tr>
-                                <th scope="row" style="width: 35%;">Group</th>
-                                <td>{{ bird.group or '—' }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Order</th>
+                                <th scope="row" style="width: 35%;">Order</th>
                                 <td>{{ bird.order or '—' }}</td>
                             </tr>
                             <tr>

@@ -40,7 +40,7 @@
                             {% if bird.thumb_url %}
                             <a href="/birds/species/{{ bird.id }}">
                                 <img src="{{ bird.thumb_url }}" alt="{{ bird.common_name }}"
-                                     loading="lazy" class="img-thumbnail" style="max-width: 150px; height: auto;">
+                                     loading="lazy" class="img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
                             </a>
                             {% endif %}
                         </td>

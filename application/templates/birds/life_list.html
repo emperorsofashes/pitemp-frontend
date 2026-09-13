@@ -11,12 +11,23 @@
 
     <div class="mb-3">
         {% if edit_mode %}
-            <a href="/birds" class="btn btn-secondary mr-2">Exit Edit Mode</a>
+            <a href="/birds?sort_by={{ sort_by }}" class="btn btn-secondary mr-2">Exit Edit Mode</a>
         {% else %}
-            <a href="/birds/edit" class="btn btn-primary mr-2">Edit Mode</a>
+            <a href="/birds/edit?sort_by={{ sort_by }}" class="btn btn-primary mr-2">Edit Mode</a>
         {% endif %}
         <a href="/birds/add" class="btn btn-success mr-2">Add Bird</a>
-        <a href="/birds/near_me" class="btn btn-info">Add Bird Near Me</a>
+        <a href="/birds/near_me" class="btn btn-info mr-2">Add Bird Near Me</a>
+        
+        <div class="d-inline-block">
+            <select id="sort-select" class="form-control d-inline-block" style="width: auto; display: inline-block;">
+                <option value="date_added_desc" {% if sort_by == 'date_added_desc' %}selected{% endif %}>Newly Added First</option>
+                <option value="date_added_asc" {% if sort_by == 'date_added_asc' %}selected{% endif %}>Oldest Added First</option>
+                <option value="date_sighted_desc" {% if sort_by == 'date_sighted_desc' %}selected{% endif %}>Most Recent Sighting</option>
+                <option value="date_sighted_asc" {% if sort_by == 'date_sighted_asc' %}selected{% endif %}>Oldest Sighting</option>
+                <option value="name_asc" {% if sort_by == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+                <option value="name_desc" {% if sort_by == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+            </select>
+        </div>
     </div>
 
     {% if life_list %}
@@ -33,25 +44,25 @@
                 {% endif %}
             </tr>
         </thead>
-        <tbody>
+        <tbody id="life-list-body">
             {% for entry in life_list %}
-            <tr>
+            <tr data-id="{{ entry.id }}" data-common-name="{{ entry.common_name }}" data-date-sighted="{{ entry.date_sighted.strftime('%Y-%m-%d') }}">
                 <td>
                     {% if entry.thumb_url %}
                         {% if entry.bird_id %}
                         <a href="/birds/species/{{ entry.bird_id }}">
                             <img src="{{ entry.thumb_url }}" alt="{{ entry.common_name }}"
-                                 loading="lazy" class="img-thumbnail" style="max-width: 200px; height: auto;">
+                                 loading="lazy" style="width: 100px; height: 100px; object-fit: contain; border: 1px solid white; border-radius: 0.25rem; background: transparent;">
                         </a>
                         {% else %}
                         <img src="{{ entry.thumb_url }}" alt="{{ entry.common_name }}"
-                             loading="lazy" class="img-thumbnail" style="max-width: 200px; height: auto;">
+                             loading="lazy" style="width: 100px; height: 100px; object-fit: contain; border: 1px solid white; border-radius: 0.25rem; background: transparent;">
                         {% endif %}
                     {% endif %}
                 </td>
                 <td>
                     {% if entry.bird_id %}
-                    <a href="/birds/species/{{ entry.bird_id }}">{{ entry.common_name }}</a>
+                    <a href="/birds/species/{{ entry.bird_id }}" style="color: #0f6674;">{{ entry.common_name }}</a>
                     {% else %}
                     {{ entry.common_name }}
                     {% endif %}
@@ -77,4 +88,48 @@
     <p>No birds in your life list yet. <a href="/birds/add">Add your first bird!</a></p>
     {% endif %}
 </div>
+
+<script>
+document.getElementById('sort-select').addEventListener('change', function() {
+    const sortValue = this.value;
+    const tbody = document.getElementById('life-list-body');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort(function(a, b) {
+        const aId = a.dataset.id;
+        const bId = b.dataset.id;
+        const aName = a.dataset.commonName.toLowerCase();
+        const bName = b.dataset.commonName.toLowerCase();
+        const aDateStr = a.dataset.dateSighted;
+        const bDateStr = b.dataset.dateSighted;
+        const aDate = aDateStr ? new Date(aDateStr) : new Date(0);
+        const bDate = bDateStr ? new Date(bDateStr) : new Date(0);
+        
+        switch(sortValue) {
+            case 'date_added_desc':
+                return bId.localeCompare(aId);
+            case 'date_added_asc':
+                return aId.localeCompare(bId);
+            case 'date_sighted_desc':
+                if (isNaN(aDate.getTime()) || isNaN(bDate.getTime())) {
+                    return bId.localeCompare(aId);
+                }
+                return bDate.getTime() - aDate.getTime();
+            case 'date_sighted_asc':
+                if (isNaN(aDate.getTime()) || isNaN(bDate.getTime())) {
+                    return aId.localeCompare(bId);
+                }
+                return aDate.getTime() - bDate.getTime();
+            case 'name_asc':
+                return aName.localeCompare(bName);
+            case 'name_desc':
+                return bName.localeCompare(aName);
+            default:
+                return 0;
+        }
+    });
+    
+    rows.forEach(row => tbody.appendChild(row));
+});
+</script>
 {% endblock %}
