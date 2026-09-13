@@ -193,183 +193,210 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const gbifId = "{{ bird.gbif_id or '' }}";
-    const inatId = "{{ bird.inat_id or '' }}";
-    const cartoApiKey = "{{ carto_api_key or '' }}";
-    const statusEl = document.getElementById('map-status');
+    const mapContainer = document.getElementById('species-map');
+    if (!mapContainer) return;
 
-    // 1. GBIF Dark Basemap
-    const gbifDark = L.tileLayer('https://tile.gbif.org/3857/omt/{z}/{x}/{y}@1x.png?style=gbif-dark', {
-        tileSize: 512,
-        zoomOffset: -1,
-        attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 16
-    });
+    let mapInitialized = false;
 
-    // 2. Standard OpenStreetMap Basemap
-    const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        tileSize: 256,
-        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-    });
+    function initMap() {
+        if (mapInitialized) return;
+        mapInitialized = true;
 
-    const baseMaps = {
-        "Dark (GBIF)": gbifDark,
-        "Standard (OSM)": openStreetMap
-    };
+        const gbifId = "{{ bird.gbif_id or '' }}";
+        const inatId = "{{ bird.inat_id or '' }}";
+        const cartoApiKey = "{{ carto_api_key or '' }}";
+        const statusEl = document.getElementById('map-status');
 
-    if (cartoApiKey) {
-        const cartoDark = L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${cartoApiKey}`, {
+        // 1. GBIF Dark Basemap
+        const gbifDark = L.tileLayer('https://tile.gbif.org/3857/omt/{z}/{x}/{y}@1x.png?style=gbif-dark', {
+            tileSize: 512,
+            zoomOffset: -1,
+            attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 16
+        });
+
+        // 2. Standard OpenStreetMap Basemap
+        const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             tileSize: 256,
-            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
             maxZoom: 19
         });
-        baseMaps["CARTO Dark"] = cartoDark;
-    }
 
-    const map = L.map('species-map', {
-        center: [20, 0],
-        zoom: 2,
-        layers: [gbifDark]
-    });
+        const baseMaps = {
+            "Dark (GBIF)": gbifDark,
+            "Standard (OSM)": openStreetMap
+        };
 
-    const overlayMaps = {};
-
-    // GBIF Occurrence Density (Hex Binned - Vibrant Purple/Yellow)
-    if (gbifId) {
-        const gbifHexLayer = L.tileLayer(
-            `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&bin=hex&hexPerTile=50&style=purpleYellow.poly`, {
-                tileSize: 512,
-                zoomOffset: -1,
-                opacity: 0.85,
-                attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
-                maxZoom: 16
-            }
-        );
-        gbifHexLayer.addTo(map);
-        overlayMaps["GBIF Density (Hex)"] = gbifHexLayer;
-
-        const gbifHeatmapLayer = L.tileLayer(
-            `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&style=orangeHeat.point`, {
-                tileSize: 512,
-                zoomOffset: -1,
-                opacity: 0.8,
-                attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
-                maxZoom: 16
-            }
-        );
-        overlayMaps["GBIF Heatmap (Points)"] = gbifHeatmapLayer;
-    }
-
-    // iNaturalist Distribution Layers
-    if (inatId) {
-        const inatHeatmapLayer = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
-            tileSize: 256,
-            opacity: 0.75,
-            attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
-            maxZoom: 18
-        });
-        if (!gbifId) {
-            inatHeatmapLayer.addTo(map);
+        if (cartoApiKey) {
+            const cartoDark = L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${cartoApiKey}`, {
+                tileSize: 256,
+                attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                maxZoom: 19
+            });
+            baseMaps["CARTO Dark"] = cartoDark;
         }
-        overlayMaps["iNaturalist Heatmap"] = inatHeatmapLayer;
 
-        const inatRangeLayer = L.tileLayer(`https://api.inaturalist.org/v1/taxon_ranges/${inatId}/{z}/{x}/{y}.png`, {
-            tileSize: 256,
-            opacity: 0.65,
-            attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
-            maxZoom: 18
+        const map = L.map('species-map', {
+            center: [20, 0],
+            zoom: 2,
+            layers: [gbifDark]
         });
-        inatRangeLayer.addTo(map);
-        overlayMaps["iNaturalist Range"] = inatRangeLayer;
 
-        const inatPointsLayer = L.tileLayer(`https://api.inaturalist.org/v1/points/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
-            tileSize: 256,
-            opacity: 0.85,
-            attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
-            maxZoom: 18
-        });
-        overlayMaps["iNaturalist Sightings"] = inatPointsLayer;
-    }
+        const overlayMaps = {};
 
-    L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
-    // Client-side LocalStorage bounds caching (30-day expiration, 0 Redis memory used)
-    const cacheKey = 'bird_bounds_' + (gbifId || inatId);
-    const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-    function applyBounds(bounds, sourceName) {
-        if (bounds && bounds.length === 2) {
-            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
-            if (statusEl) statusEl.textContent = "Framed to distribution range";
-        }
-    }
-
-    function saveBoundsToCache(bounds) {
-        try {
-            localStorage.setItem(cacheKey, JSON.stringify({
-                bounds: bounds,
-                timestamp: Date.now()
-            }));
-        } catch (e) {}
-    }
-
-    function getCachedBounds() {
-        try {
-            const raw = localStorage.getItem(cacheKey);
-            if (!raw) return null;
-            const data = JSON.parse(raw);
-            if (data && data.bounds && (Date.now() - data.timestamp < CACHE_TTL_MS)) {
-                return data.bounds;
-            }
-        } catch (e) {}
-        return null;
-    }
-
-    const cachedBounds = getCachedBounds();
-    if (cachedBounds) {
-        applyBounds(cachedBounds, "cache");
-    } else {
+        // GBIF Occurrence Density (Hex Binned - Vibrant Purple/Yellow)
         if (gbifId) {
-            fetch(`https://api.gbif.org/v1/occurrence/search?taxonKey=${gbifId}&hasCoordinate=true&limit=100`)
-                .then(res => res.ok ? res.json() : null)
-                .then(data => {
-                    if (data && data.results && data.results.length > 0) {
-                        const lats = data.results.map(r => r.decimalLatitude).filter(v => v !== undefined && v !== null);
-                        const lngs = data.results.map(r => r.decimalLongitude).filter(v => v !== undefined && v !== null);
-                        if (lats.length > 0 && lngs.length > 0) {
-                            const bounds = [
-                                [Math.min(...lats), Math.min(...lngs)],
-                                [Math.max(...lats), Math.max(...lngs)]
-                            ];
-                            applyBounds(bounds, "gbif");
-                            saveBoundsToCache(bounds);
-                        }
-                    }
-                })
-                .catch(() => {});
-        } else if (inatId) {
-            fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${inatId}&per_page=100`)
-                .then(res => res.ok ? res.json() : null)
-                .then(data => {
-                    if (data && data.results && data.results.length > 0) {
-                        const coords = data.results
-                            .map(r => r.location ? r.location.split(',').map(Number) : null)
-                            .filter(c => c && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
-                        if (coords.length > 0) {
-                            const lats = coords.map(c => c[0]);
-                            const lngs = coords.map(c => c[1]);
-                            const bounds = [
-                                [Math.min(...lats), Math.min(...lngs)],
-                                [Math.max(...lats), Math.max(...lngs)]
-                            ];
-                            applyBounds(bounds, "inat");
-                            saveBoundsToCache(bounds);
-                        }
-                    }
-                })
-                .catch(() => {});
+            const gbifHexLayer = L.tileLayer(
+                `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&bin=hex&hexPerTile=50&style=purpleYellow.poly`, {
+                    tileSize: 512,
+                    zoomOffset: -1,
+                    opacity: 0.85,
+                    attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
+                    maxZoom: 16
+                }
+            );
+            gbifHexLayer.addTo(map);
+            overlayMaps["GBIF Density (Hex)"] = gbifHexLayer;
+
+            const gbifHeatmapLayer = L.tileLayer(
+                `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&style=orangeHeat.point`, {
+                    tileSize: 512,
+                    zoomOffset: -1,
+                    opacity: 0.8,
+                    attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
+                    maxZoom: 16
+                }
+            );
+            overlayMaps["GBIF Heatmap (Points)"] = gbifHeatmapLayer;
         }
+
+        // iNaturalist Distribution Layers
+        if (inatId) {
+            const inatHeatmapLayer = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
+                tileSize: 256,
+                opacity: 0.75,
+                attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
+                maxZoom: 18
+            });
+            if (!gbifId) {
+                inatHeatmapLayer.addTo(map);
+            }
+            overlayMaps["iNaturalist Heatmap"] = inatHeatmapLayer;
+
+            const inatRangeLayer = L.tileLayer(`https://api.inaturalist.org/v1/taxon_ranges/${inatId}/{z}/{x}/{y}.png`, {
+                tileSize: 256,
+                opacity: 0.65,
+                attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
+                maxZoom: 18
+            });
+            inatRangeLayer.addTo(map);
+            overlayMaps["iNaturalist Range"] = inatRangeLayer;
+
+            const inatPointsLayer = L.tileLayer(`https://api.inaturalist.org/v1/points/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
+                tileSize: 256,
+                opacity: 0.85,
+                attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
+                maxZoom: 18
+            });
+            overlayMaps["iNaturalist Sightings"] = inatPointsLayer;
+        }
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+
+        // Client-side LocalStorage bounds caching (30-day expiration, 0 Redis memory used)
+        const cacheKey = 'bird_bounds_' + (gbifId || inatId);
+        const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+        function applyBounds(bounds) {
+            if (bounds && bounds.length === 2) {
+                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
+                if (statusEl) statusEl.textContent = "Framed to distribution range";
+                setTimeout(() => map.invalidateSize(), 150);
+            }
+        }
+
+        function saveBoundsToCache(bounds) {
+            try {
+                localStorage.setItem(cacheKey, JSON.stringify({
+                    bounds: bounds,
+                    timestamp: Date.now()
+                }));
+            } catch (e) {}
+        }
+
+        function getCachedBounds() {
+            try {
+                const raw = localStorage.getItem(cacheKey);
+                if (!raw) return null;
+                const data = JSON.parse(raw);
+                if (data && data.bounds && (Date.now() - data.timestamp < CACHE_TTL_MS)) {
+                    return data.bounds;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        const cachedBounds = getCachedBounds();
+        if (cachedBounds) {
+            applyBounds(cachedBounds);
+        } else {
+            if (gbifId) {
+                fetch(`https://api.gbif.org/v1/occurrence/search?taxonKey=${gbifId}&hasCoordinate=true&limit=100`)
+                    .then(res => res.ok ? res.json() : null)
+                    .then(data => {
+                        if (data && data.results && data.results.length > 0) {
+                            const lats = data.results.map(r => r.decimalLatitude).filter(v => v !== undefined && v !== null);
+                            const lngs = data.results.map(r => r.decimalLongitude).filter(v => v !== undefined && v !== null);
+                            if (lats.length > 0 && lngs.length > 0) {
+                                const bounds = [
+                                    [Math.min(...lats), Math.min(...lngs)],
+                                    [Math.max(...lats), Math.max(...lngs)]
+                                ];
+                                applyBounds(bounds);
+                                saveBoundsToCache(bounds);
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            } else if (inatId) {
+                fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${inatId}&per_page=100`)
+                    .then(res => res.ok ? res.json() : null)
+                    .then(data => {
+                        if (data && data.results && data.results.length > 0) {
+                            const coords = data.results
+                                .map(r => r.location ? r.location.split(',').map(Number) : null)
+                                .filter(c => c && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
+                            if (coords.length > 0) {
+                                const lats = coords.map(c => c[0]);
+                                const lngs = coords.map(c => c[1]);
+                                const bounds = [
+                                    [Math.min(...lats), Math.min(...lngs)],
+                                    [Math.max(...lats), Math.max(...lngs)]
+                                ];
+                                applyBounds(bounds);
+                                saveBoundsToCache(bounds);
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            }
+        }
+    }
+
+    // Lazy load the map with IntersectionObserver
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(function(entries, obs) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    initMap();
+                    obs.disconnect();
+                }
+            });
+        }, { rootMargin: '200px' });
+        observer.observe(mapContainer);
+    } else {
+        // Fallback for older browsers
+        initMap();
     }
 });
 </script>
