@@ -1,15 +1,18 @@
 import logging
+from datetime import datetime
 
-from flask import Blueprint, current_app, render_template, request, jsonify
+import requests
+from flask import Blueprint, current_app, jsonify, make_response, redirect, render_template, request
 
-from application import DisksDao, DISKS_DATABASE_CONFIG_KEY
+from application import DISKS_DATABASE_CONFIG_KEY, DisksDao
 from application.constants.app_constants import (
-    DATABASE_CONFIG_KEY,
     BEERS_DATABASE_CONFIG_KEY,
     BIRDS_DATABASE_CONFIG_KEY,
+    DATABASE_CONFIG_KEY,
     DATETIME_FORMAT_STRING,
 )
-from application.constants.beer_constants import ROWDY_USERNAME, BEER_STYLES_V1, BEER_STYLES_V2
+from application.constants.beer_constants import BEER_STYLES_V1, BEER_STYLES_V2, ROWDY_USERNAME
+from application.constants.bird_constants import BIRD_IMAGE_HOST
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.temperature.dao import ApplicationDao
@@ -266,7 +269,7 @@ def birds_index():
     bird_dao = _get_birds_dao()
     if bird_dao is None:
         return render_template("birds/not_configured.html")
-    
+
     life_list = bird_dao.get_life_list()
     return render_template("birds/life_list.html", life_list=life_list, edit_mode=False)
 
@@ -276,7 +279,7 @@ def birds_edit():
     bird_dao = _get_birds_dao()
     if bird_dao is None:
         return render_template("birds/not_configured.html")
-    
+
     life_list = bird_dao.get_life_list()
     return render_template("birds/life_list.html", life_list=life_list, edit_mode=True)
 
@@ -286,75 +289,58 @@ def birds_add():
     bird_dao = _get_birds_dao()
     if bird_dao is None:
         return render_template("birds/not_configured.html")
-    
+
     if request.method == "POST":
         bird_id = request.form.get("bird_id")
         scientific_name = request.form.get("scientific_name")
         common_name = request.form.get("common_name")
-        date_sighted_str = request.form.get("date_sighted")
+        date_sighted = datetime.strptime(request.form.get("date_sighted"), "%Y-%m-%d")
         notes = request.form.get("notes")
-        
-        from datetime import datetime
-        from flask import redirect
-        date_sighted = datetime.strptime(date_sighted_str, "%Y-%m-%d")
-        
-        # Check if bird already exists in life list
+
         existing_entry = bird_dao.get_life_list_entry_by_bird_id(bird_id)
         if existing_entry:
-            # Redirect to edit page for existing entry
             return redirect(f"/birds/edit_entry/{existing_entry.id}")
-        
+
         bird_dao.add_to_life_list(bird_id, scientific_name, common_name, date_sighted, notes)
         return redirect("/birds")
-    
-    # GET request - show search form
+
     query = request.args.get("query", "")
-    birds = []
-    if query:
-        birds = bird_dao.search_birds(query)
-    
-    # Get all bird_ids in life list for visual indicator
+    birds = bird_dao.search_birds(query) if query else []
     life_list = bird_dao.get_life_list()
-    life_list_bird_ids = {entry.bird_id for entry in life_list}
-    
-    return render_template("birds/add_bird.html", birds=birds, query=query, life_list_bird_ids=life_list_bird_ids)
+    life_list_by_bird_id = {entry.bird_id: entry for entry in life_list}
+
+    return render_template(
+        "birds/add_bird.html",
+        birds=birds,
+        query=query,
+        life_list_by_bird_id=life_list_by_bird_id,
+    )
 
 
 @HTML_BLUEPRINT.route("/birds/delete/<entry_id>", methods=["POST"])
 def birds_delete(entry_id):
-    from flask import redirect
     bird_dao = _get_birds_dao()
-    if bird_dao is None:
-        return redirect("/birds")
-    
-    bird_dao.delete_from_life_list(entry_id)
+    if bird_dao is not None:
+        bird_dao.delete_from_life_list(entry_id)
     return redirect("/birds")
 
 
 @HTML_BLUEPRINT.route("/birds/edit_entry/<entry_id>", methods=["GET", "POST"])
 def birds_edit_entry(entry_id):
-    from flask import redirect
     bird_dao = _get_birds_dao()
     if bird_dao is None:
         return redirect("/birds")
-    
+
     if request.method == "POST":
-        date_sighted_str = request.form.get("date_sighted")
+        date_sighted = datetime.strptime(request.form.get("date_sighted"), "%Y-%m-%d")
         notes = request.form.get("notes")
-        
-        from datetime import datetime
-        date_sighted = datetime.strptime(date_sighted_str, "%Y-%m-%d")
-        
         bird_dao.update_life_list_entry(entry_id, date_sighted, notes)
         return redirect("/birds")
-    
-    # GET request - show edit form
-    life_list = bird_dao.get_life_list()
-    entry = next((e for e in life_list if e.id == entry_id), None)
-    
+
+    entry = bird_dao.get_life_list_entry(entry_id)
     if entry is None:
         return redirect("/birds")
-    
+
     return render_template("birds/edit_entry.html", entry=entry)
 
 
@@ -363,10 +349,10 @@ def birds_search():
     bird_dao = _get_birds_dao()
     if bird_dao is None:
         return jsonify({"birds": []})
-    
+
     query = request.args.get("query", "")
-    birds = bird_dao.search_birds(query)
-    
+    birds = bird_dao.search_birds(query) if query else []
+
     return jsonify({
         "birds": [
             {
@@ -381,29 +367,19 @@ def birds_search():
 
 @HTML_BLUEPRINT.route("/birds/image/<filename>")
 def birds_image(filename):
-    """Proxy bird images from R2 with aggressive caching headers"""
-    from flask import make_response
-    from application.constants.bird_constants import BIRD_IMAGE_HOST
-    import requests
-    
+    """Proxy bird images from R2 with caching headers."""
     if not BIRD_IMAGE_HOST:
         return "Image host not configured", 404
-    
+
     image_url = f"{BIRD_IMAGE_HOST}/{filename}"
-    
     try:
         resp = requests.get(image_url, stream=True)
         if resp.status_code != 200:
             return "Image not found", 404
-        
-        # Create response with image data using make_response (more idiomatic Flask)
+
         response = make_response(resp.content)
-        response.mimetype = resp.headers.get('Content-Type', 'image/avif')
-        
-        # Set aggressive caching headers (1 year)
-        response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
-        response.headers['Expires'] = 'Fri, 31 Dec 9999 23:59:59 GMT'
-        
+        response.mimetype = resp.headers.get("Content-Type", "image/avif")
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return response
     except Exception as e:
         LOG.error(f"Error fetching image from R2: {e}")

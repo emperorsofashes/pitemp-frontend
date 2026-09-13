@@ -1,50 +1,79 @@
 from dataclasses import dataclass
 from datetime import datetime
-from application.constants.bird_constants import BIRD_IMAGE_HOST
 
 
-@dataclass
-class Bird:
+@dataclass(kw_only=True)
+class BirdBase:
     id: str
     scientific_name: str
     common_name: str
-    birdnet_id: str | None
-    ebird_id: str | None
-    inat_id: str | None
-    gbif_id: str | None
-    avibase_id: str | None
-    birdlife_id: str | None
-    ncbi_id: str | None
-    group: str | None
-    order: str | None
-    family: str | None
-    genus: str | None
-    updated_at: datetime
 
-    def get_thumb_url(self) -> str | None:
-        """Get the thumbnail URL for this bird"""
-        if not BIRD_IMAGE_HOST:
+    @property
+    def thumb_url(self) -> str | None:
+        if not self.scientific_name:
             return None
-        # Convert common name to lowercase and replace spaces with underscores
-        species_name = self.scientific_name.lower().replace(" ", "_")
-        return f"{BIRD_IMAGE_HOST}/{species_name}_thumb.avif"
+        slug = self.scientific_name.strip().lower().replace(" ", "_")
+        return f"/birds/image/{slug}_thumb.avif"
 
-    def get_full_image_url(self) -> str | None:
-        """Get the full image URL for this bird"""
-        if not BIRD_IMAGE_HOST:
+    @property
+    def full_image_url(self) -> str | None:
+        if not self.scientific_name:
             return None
-        # Convert common name to lowercase and replace spaces with underscores
-        species_name = self.scientific_name.lower().replace(" ", "_")
-        return f"{BIRD_IMAGE_HOST}/{species_name}.avif"
+        slug = self.scientific_name.strip().lower().replace(" ", "_")
+        return f"/birds/image/{slug}.avif"
 
 
-@dataclass
-class LifeListEntry:
-    id: str
+@dataclass(kw_only=True)
+class Bird(BirdBase):
+    birdnet_id: str | None = None
+    ebird_id: str | None = None
+    inat_id: str | None = None
+    gbif_id: str | None = None
+    avibase_id: str | None = None
+    birdlife_id: str | None = None
+    ncbi_id: str | None = None
+    group: str | None = None
+    order: str | None = None
+    family: str | None = None
+    genus: str | None = None
+    updated_at: datetime | None = None
+
+    @classmethod
+    def from_mongo(cls, doc: dict) -> "Bird":
+        identifiers = doc.get("identifiers", {})
+        taxonomy = doc.get("taxonomy", {})
+        return cls(
+            id=str(doc["_id"]),
+            scientific_name=doc.get("scientific_name", ""),
+            common_name=doc.get("common_name", ""),
+            birdnet_id=identifiers.get("birdnet"),
+            ebird_id=identifiers.get("ebird"),
+            inat_id=identifiers.get("inat"),
+            gbif_id=identifiers.get("gbif"),
+            avibase_id=identifiers.get("avibase"),
+            birdlife_id=identifiers.get("birdlife"),
+            ncbi_id=identifiers.get("ncbi"),
+            group=taxonomy.get("group"),
+            order=taxonomy.get("order"),
+            family=taxonomy.get("family"),
+            genus=taxonomy.get("genus"),
+            updated_at=doc.get("updated_at"),
+        )
+
+
+@dataclass(kw_only=True)
+class LifeListEntry(BirdBase):
     bird_id: str
-    scientific_name: str
-    common_name: str
     date_sighted: datetime
     notes: str | None = None
-    thumb_url: str | None = None
-    full_image_url: str | None = None
+
+    @classmethod
+    def from_mongo(cls, doc: dict) -> "LifeListEntry":
+        return cls(
+            id=str(doc["_id"]),
+            bird_id=doc.get("bird_id", ""),
+            scientific_name=doc.get("scientific_name", ""),
+            common_name=doc.get("common_name", ""),
+            date_sighted=doc.get("date_sighted", datetime.now()),
+            notes=doc.get("notes"),
+        )
