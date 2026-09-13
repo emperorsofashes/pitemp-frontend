@@ -2,6 +2,7 @@
 
 {% block header %}
     <title>Bird Life List</title>
+    <link rel="icon" href="{{ url_for('static', filename='bird.ico') }}">
 {% endblock %}
 
 {% block content %}
@@ -10,12 +11,12 @@
 
     <div class="mb-3">
         {% if edit_mode %}
-            <a href="/birds" class="btn btn-secondary">Exit Edit Mode</a>
+            <a href="/birds" class="btn btn-secondary mr-2">Exit Edit Mode</a>
         {% else %}
-            <a href="/birds/edit" class="btn btn-primary">Edit Mode</a>
+            <a href="/birds/edit" class="btn btn-primary mr-2">Edit Mode</a>
         {% endif %}
-        <a href="/birds/add" class="btn btn-success">Add Bird</a>
-        <a href="/birds/near_me" class="btn btn-success">Add Bird Near Me</a>
+        <a href="/birds/add" class="btn btn-success mr-2">Add Bird</a>
+        <a href="/birds/near_me" class="btn btn-info">Add Bird Near Me</a>
     </div>
 
     {% if life_list %}
@@ -50,7 +51,7 @@
                 </td>
                 <td>
                     {% if entry.bird_id %}
-                    <a href="/birds/species/{{ entry.bird_id }}" class="text-white font-weight-bold">{{ entry.common_name }}</a>
+                    <a href="/birds/species/{{ entry.bird_id }}">{{ entry.common_name }}</a>
                     {% else %}
                     {{ entry.common_name }}
                     {% endif %}
