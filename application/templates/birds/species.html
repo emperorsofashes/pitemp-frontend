@@ -37,7 +37,7 @@
 
     <!-- Sighting Status Card -->
     {% if life_list_entry %}
-    <div class="alert alert-success d-flex justify-content-between align-items-center mb-4">
+    <div id="sighting-status-card" class="alert alert-success d-flex justify-content-between align-items-center mb-4">
         <div>
             <strong>✓ On Your Life List!</strong> Sighted on <strong>{{
             life_list_entry.date_sighted.strftime('%Y-%m-%d') }}</strong>
@@ -48,7 +48,7 @@
         <a href="/birds/edit_entry/{{ life_list_entry.id }}" class="btn btn-warning btn-sm">Edit Sighting</a>
     </div>
     {% else %}
-    <div class="alert alert-info d-flex justify-content-between align-items-center mb-4">
+    <div id="sighting-status-card" class="alert alert-info d-flex justify-content-between align-items-center mb-4">
         <div>
             <strong>Not on your life list yet.</strong> Add this bird when you spot it!
         </div>
@@ -499,8 +499,17 @@
                     submitBtn.textContent = "Save to Life List";
                     if (data.success) {
                         $('#addSightingModal').modal('hide');
-                        // Reload the page to show the updated life list status
-                        window.location.reload();
+                        // Update the sighting status card to show bird is on life list
+                        const statusCard = document.getElementById('sighting-status-card');
+                        const dateText = payload.date_sighted;
+                        const notesText = payload.notes ? `<br><small><strong>Notes:</strong> ${payload.notes}</small>` : '';
+                        statusCard.className = 'alert alert-success d-flex justify-content-between align-items-center mb-4';
+                        statusCard.innerHTML = `
+                            <div>
+                                <strong>✓ ${payload.common_name} added to your life list!</strong> Sighted on <strong>${dateText}</strong>${notesText}
+                            </div>
+                            <a href="/birds/edit_entry/${data.entry_id}" class="btn btn-warning btn-sm">Edit Sighting</a>
+                        `;
                     } else {
                         alert("Error adding sighting: " + (data.error || "Unknown error"));
                     }

@@ -10,6 +10,10 @@
 
     <a href="/birds" class="btn btn-secondary mb-3">Back to Life List</a>
 
+    <div id="success-alert" class="alert alert-success" style="display: none;">
+        <strong>Success!</strong> <span id="success-bird-name"></span> added to life list.
+    </div>
+
     <div class="card bg-dark text-white">
         <div class="card-body">
             <h5 class="card-title">Search for a Bird</h5>
@@ -35,7 +39,7 @@
                 </thead>
                 <tbody>
                     {% for bird in birds %}
-                    <tr>
+                    <tr id="row-{{ bird.id }}">
                         <td>
                             {% if bird.thumb_url %}
                             <a href="/birds/species/{{ bird.id }}">
@@ -74,7 +78,7 @@
         <div class="card bg-dark text-white">
             <div class="card-body">
                 <h5 class="card-title">Add <span id="form_bird_name"></span> to Life List</h5>
-                <form action="/birds/add" method="POST">
+                <form id="addSightingForm">
                     <input type="hidden" name="bird_id" id="bird_id">
                     <input type="hidden" name="scientific_name" id="scientific_name">
                     <input type="hidden" name="common_name" id="common_name">
@@ -98,7 +102,10 @@
 </div>
 
 <script>
+let currentBirdId = null;
+
 function showAddForm(birdId, scientificName, commonName) {
+    currentBirdId = birdId;
     document.getElementById('bird_id').value = birdId;
     document.getElementById('scientific_name').value = scientificName;
     document.getElementById('common_name').value = commonName;
@@ -111,5 +118,62 @@ function showAddForm(birdId, scientificName, commonName) {
 function hideAddForm() {
     document.getElementById('addFormContainer').style.display = 'none';
 }
+
+document.getElementById('addSightingForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Adding...';
+
+    const payload = {
+        bird_id: document.getElementById('bird_id').value,
+        scientific_name: document.getElementById('scientific_name').value,
+        common_name: document.getElementById('common_name').value,
+        date_sighted: document.getElementById('date_sighted').value,
+        notes: document.getElementById('notes').value
+    };
+
+    fetch('/birds/api/add_sighting', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add to Life List';
+        if (data.success) {
+            hideAddForm();
+            document.getElementById('success-bird-name').textContent = payload.common_name;
+            document.getElementById('success-alert').style.display = 'block';
+
+            // Update the row to show bird is on life list
+            if (currentBirdId) {
+                const row = document.getElementById('row-' + currentBirdId);
+                if (row) {
+                    const actionCell = row.querySelector('td:last-child');
+                    const nameCell = row.querySelector('td:nth-child(2)');
+                    // Add checkmark
+                    if (!nameCell.querySelector('.text-success')) {
+                        const checkmark = document.createElement('span');
+                        checkmark.className = 'text-success';
+                        checkmark.title = 'Already on life list';
+                        checkmark.textContent = ' ✓';
+                        nameCell.appendChild(checkmark);
+                    }
+                    // Change button to Edit Sighting
+                    actionCell.innerHTML = `<a href="/birds/edit_entry/${data.entry_id}" class="btn btn-warning btn-sm">Edit Sighting</a>`;
+                }
+            }
+        } else {
+            alert("Error adding sighting: " + (data.error || "Unknown error"));
+        }
+    })
+    .catch(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Add to Life List';
+        alert("Network error occurred while saving sighting.");
+    });
+});
 </script>
 {% endblock %}
