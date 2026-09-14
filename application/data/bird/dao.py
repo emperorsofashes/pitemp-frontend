@@ -67,18 +67,31 @@ class BirdDao:
             return None
 
     def search_birds(self, query: str) -> list[Bird]:
-        """Search birds by common name or scientific name."""
+        """Search birds by common name or scientific name with forgiving matching."""
+        # Trim and normalize query
+        query = query.strip()
+        if not query:
+            return []
+
+        # Create space-removed version for space-insensitive matching (e.g., "Fairy Wren" -> "Fairywren")
+        query_no_spaces = query.replace(" ", "")
+
         cache_key = f"bird_search_{query}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
+        # Use MongoDB regex for efficient substring matching
+        # Match original query as substring (case-insensitive)
         docs = self.birds_collection.find({
             "$or": [
                 {"common_name": {"$regex": query, "$options": "i"}},
                 {"scientific_name": {"$regex": query, "$options": "i"}},
+                {"common_name": {"$regex": query_no_spaces, "$options": "i"}},
+                {"scientific_name": {"$regex": query_no_spaces, "$options": "i"}},
             ]
         })
+
         birds = [Bird.from_mongo(doc) for doc in docs]
         self._set_cached(cache_key, birds)
         return birds
