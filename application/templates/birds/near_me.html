@@ -213,8 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsCount = document.getElementById('results-count');
 
     // Default today's date for sighting form
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('modal-date-sighted').value = today;
+    document.getElementById('modal-date-sighted').value = new Date().toISOString().split('T')[0];
 
     function showError(msg) {
         errorAlert.textContent = msg;
@@ -299,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 birdsData = data.birds || [];
                 renderTable();
             })
-            .catch(err => {
+            .catch(() => {
                 showError("Network error while fetching nearby species.");
                 tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load nearby species.</td></tr>`;
             });
@@ -333,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? `<a href="/birds/species/${bird.bird_id}" class="text-white font-weight-bold" style="font-size: 1.05rem;">${bird.common_name}</a>`
                 : `<span class="text-white font-weight-bold" style="font-size: 1.05rem;">${bird.common_name}</span>`;
 
-            let actionCol = '';
+            let actionCol;
             if (bird.on_life_list) {
                 const dateText = bird.date_sighted ? ` (${bird.date_sighted})` : '';
                 actionCol = `<span class="badge badge-success px-2 py-1"><i class="fas fa-check mr-1"></i>✓ On Life List${dateText}</span>`;
@@ -424,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert("Error adding sighting: " + (data.error || "Unknown error"));
             }
         })
-        .catch(err => {
+        .catch(() => {
             submitBtn.disabled = false;
             submitBtn.textContent = "Save to Life List";
             alert("Network error occurred while saving sighting.");
