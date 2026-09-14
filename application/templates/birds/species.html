@@ -22,14 +22,14 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <div class="me-3">
             <h1 class="mb-0">{{ bird.common_name }}</h1>
             <p class="text-muted font-italic mb-0" style="font-size: 1.25rem;"><em>{{ bird.scientific_name }}</em></p>
         </div>
         <div>
-            <a href="/birds" class="btn btn-secondary mr-2">Back to Life List</a>
-            <a href="/birds/add" class="btn btn-outline-light">Search Birds</a>
+            <a href="/birds" class="btn btn-secondary mr-2 my-1">Back to Life List</a>
+            <a href="/birds/add" class="btn btn-outline-light my-1">Search Birds</a>
         </div>
     </div>
 
@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const map = L.map('species-map', {
             center: [20, 0],
             zoom: 2,
-            layers: [gbifDark]
+            layers: [openStreetMap]
         });
 
         const overlayMaps = {};
@@ -305,7 +305,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     maxZoom: 16
                 }
             );
-            gbifHexLayer.addTo(map);
             overlayMaps["GBIF Density (Hex)"] = gbifHexLayer;
 
             const gbifHeatmapLayer = L.tileLayer(
@@ -317,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     maxZoom: 16
                 }
             );
+            gbifHeatmapLayer.addTo(map);
             overlayMaps["GBIF Heatmap (Points)"] = gbifHeatmapLayer;
         }
 
