@@ -1,5 +1,8 @@
+import os
 from dataclasses import dataclass
 from datetime import datetime
+
+BIRD_IMAGE_HOST = os.environ.get("BIRD_IMAGE_HOST", "")
 
 
 @dataclass(kw_only=True)
@@ -10,17 +13,17 @@ class BirdBase:
 
     @property
     def thumb_url(self) -> str | None:
-        if not self.scientific_name:
+        if not self.scientific_name or not BIRD_IMAGE_HOST:
             return None
         slug = self.scientific_name.strip().lower().replace(" ", "_")
-        return f"/birds/image/{slug}_thumb.avif"
+        return f"{BIRD_IMAGE_HOST}/{slug}_thumb.avif"
 
     @property
     def full_image_url(self) -> str | None:
-        if not self.scientific_name:
+        if not self.scientific_name or not BIRD_IMAGE_HOST:
             return None
         slug = self.scientific_name.strip().lower().replace(" ", "_")
-        return f"/birds/image/{slug}.avif"
+        return f"{BIRD_IMAGE_HOST}/{slug}.avif"
 
 
 @dataclass(kw_only=True)

@@ -12,7 +12,7 @@ from application.constants.app_constants import (
     DATETIME_FORMAT_STRING,
 )
 from application.constants.beer_constants import BEER_STYLES_V1, BEER_STYLES_V2, ROWDY_USERNAME
-from application.constants.bird_constants import BIRD_IMAGE_HOST, CARTO_API_KEY
+from application.constants.bird_constants import CARTO_API_KEY
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.temperature.dao import ApplicationDao
@@ -508,36 +508,6 @@ def birds_search():
     })
 
 
-@HTML_BLUEPRINT.route("/birds/image/<filename>")
-def birds_image(filename):
-    """Proxy bird images from R2 with caching headers."""
-    if not BIRD_IMAGE_HOST:
-        return "Image host not configured", 404
-
-    image_url = f"{BIRD_IMAGE_HOST}/{filename}"
-    try:
-        resp = requests.get(image_url, stream=True)
-        if resp.status_code != 200:
-            return "Image not found", 404
-
-        # Generate ETag from content hash
-        import hashlib
-        content = resp.content
-        etag = f'"{hashlib.md5(content).hexdigest()}"'
-
-        # Check if client has cached version
-        if_none_match = request.headers.get('If-None-Match')
-        if if_none_match and if_none_match == etag:
-            return '', 304
-
-        response = make_response(content)
-        response.mimetype = resp.headers.get("Content-Type", "image/avif")
-        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        response.headers["ETag"] = etag
-        return response
-    except Exception as e:
-        LOG.error(f"Error fetching image from R2: {e}")
-        return "Error fetching image", 500
 
 
 def _get_page(days_back: int):
