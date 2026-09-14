@@ -1,23 +1,25 @@
 {% extends "base.html" %}
 
 {% block header %}
-    <title>{{ bird.common_name }} ({{ bird.scientific_name }})</title>
-    <link rel="icon" href="{{ url_for('static', filename='bird.ico') }}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <style>
-        #species-map {
-            height: 520px;
-            width: 100%;
-            border-radius: 0 0 0.25rem 0.25rem;
-            z-index: 1;
-        }
-        .leaflet-container {
-            background: #111;
-        }
-    </style>
+<title>{{ bird.common_name }} ({{ bird.scientific_name }})</title>
+<link rel="icon" href="{{ url_for('static', filename='bird.ico') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<!--suppress CssUnusedSymbol -->
+<style>
+    #species-map {
+        height: 520px;
+        width: 100%;
+        border-radius: 0 0 0.25rem 0.25rem;
+        z-index: 1;
+    }
+
+    .leaflet-container {
+        background: #111;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -37,7 +39,8 @@
     {% if life_list_entry %}
     <div class="alert alert-success d-flex justify-content-between align-items-center mb-4">
         <div>
-            <strong>✓ On Your Life List!</strong> Sighted on <strong>{{ life_list_entry.date_sighted.strftime('%Y-%m-%d') }}</strong>
+            <strong>✓ On Your Life List!</strong> Sighted on <strong>{{
+            life_list_entry.date_sighted.strftime('%Y-%m-%d') }}</strong>
             {% if life_list_entry.notes %}
             <br><small><strong>Notes:</strong> {{ life_list_entry.notes }}</small>
             {% endif %}
@@ -49,7 +52,8 @@
         <div>
             <strong>Not on your life list yet.</strong> Add this bird when you spot it!
         </div>
-        <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addSightingModal">Add to Life List</button>
+        <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addSightingModal">Add to Life List
+        </button>
     </div>
     {% endif %}
 
@@ -81,18 +85,18 @@
                 <div class="card-body p-0">
                     <table class="table table-dark table-striped mb-0">
                         <tbody>
-                            <tr>
-                                <th scope="row" style="width: 35%;">Order</th>
-                                <td>{{ bird.order or '—' }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Family</th>
-                                <td>{{ bird.family or '—' }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Genus</th>
-                                <td>{{ bird.genus or '—' }}</td>
-                            </tr>
+                        <tr>
+                            <th scope="row" style="width: 35%;">Order</th>
+                            <td>{{ bird.order or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Family</th>
+                            <td>{{ bird.family or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Genus</th>
+                            <td>{{ bird.genus or '—' }}</td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
@@ -106,72 +110,77 @@
                 <div class="card-body p-0">
                     <table class="table table-dark table-striped mb-0">
                         <tbody>
-                            <tr>
-                                <th scope="row" style="width: 35%;">Database ID</th>
-                                <td><code>{{ bird.id }}</code></td>
-                            </tr>
-                            <tr>
-                                <th scope="row">BirdNET ID</th>
-                                <td>{{ bird.birdnet_id or '—' }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">eBird ID</th>
-                                <td>
-                                    {% if bird.ebird_id %}
-                                    <a href="https://ebird.org/species/{{ bird.ebird_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.ebird_id }}</a>
-                                    {% else %}
-                                    —
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">iNaturalist ID</th>
-                                <td>
-                                    {% if bird.inat_id %}
-                                    <a href="https://www.inaturalist.org/taxa/{{ bird.inat_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.inat_id }}</a>
-                                    {% else %}
-                                    —
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">GBIF ID</th>
-                                <td>
-                                    {% if bird.gbif_id %}
-                                    <a href="https://www.gbif.org/species/{{ bird.gbif_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.gbif_id }}</a>
-                                    {% else %}
-                                    —
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Avibase ID</th>
-                                <td>
-                                    {% if bird.avibase_id %}
-                                    <a href="https://avibase.bsc-eoc.org/species.jsp?avibaseid={{ bird.avibase_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.avibase_id }}</a>
-                                    {% else %}
-                                    —
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">BirdLife ID</th>
-                                <td>{{ bird.birdlife_id or '—' }}</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">NCBI Taxon ID</th>
-                                <td>
-                                    {% if bird.ncbi_id %}
-                                    <a href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={{ bird.ncbi_id }}" target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.ncbi_id }}</a>
-                                    {% else %}
-                                    —
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Updated At</th>
-                                <td>{{ bird.updated_at.strftime('%Y-%m-%d %H:%M:%S') if bird.updated_at else '—' }}</td>
-                            </tr>
+                        <tr>
+                            <th scope="row" style="width: 35%;">Database ID</th>
+                            <td><code>{{ bird.id }}</code></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">BirdNET ID</th>
+                            <td>{{ bird.birdnet_id or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">eBird ID</th>
+                            <td>
+                                {% if bird.ebird_id %}
+                                <a href="https://ebird.org/species/{{ bird.ebird_id }}" target="_blank"
+                                   rel="noopener noreferrer" class="text-info">{{ bird.ebird_id }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">iNaturalist ID</th>
+                            <td>
+                                {% if bird.inat_id %}
+                                <a href="https://www.inaturalist.org/taxa/{{ bird.inat_id }}" target="_blank"
+                                   rel="noopener noreferrer" class="text-info">{{ bird.inat_id }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">GBIF ID</th>
+                            <td>
+                                {% if bird.gbif_id %}
+                                <a href="https://www.gbif.org/species/{{ bird.gbif_id }}" target="_blank"
+                                   rel="noopener noreferrer" class="text-info">{{ bird.gbif_id }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Avibase ID</th>
+                            <td>
+                                {% if bird.avibase_id %}
+                                <a href="https://avibase.bsc-eoc.org/species.jsp?avibaseid={{ bird.avibase_id }}"
+                                   target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.avibase_id }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">BirdLife ID</th>
+                            <td>{{ bird.birdlife_id or '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">NCBI Taxon ID</th>
+                            <td>
+                                {% if bird.ncbi_id %}
+                                <a href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={{ bird.ncbi_id }}"
+                                   target="_blank" rel="noopener noreferrer" class="text-info">{{ bird.ncbi_id }}</a>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Updated At</th>
+                            <td>{{ bird.updated_at.strftime('%Y-%m-%d %H:%M:%S') if bird.updated_at else '—' }}</td>
+                        </tr>
                         </tbody>
                     </table>
                 </div>
@@ -196,7 +205,8 @@
 </div>
 
 <!-- Modal: Add Sighting -->
-<div class="modal fade" id="addSightingModal" tabindex="-1" role="dialog" aria-labelledby="addSightingModalLabel" aria-hidden="true">
+<div class="modal fade" id="addSightingModal" tabindex="-1" role="dialog" aria-labelledby="addSightingModalLabel"
+     aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content bg-dark text-white border-secondary">
             <div class="modal-header border-secondary">
@@ -225,7 +235,8 @@
                     <div class="form-group">
                         <label for="modal-notes">Notes (optional)</label>
                         <textarea class="form-control bg-dark text-white border-secondary"
-                                  id="modal-notes" name="notes" rows="3" placeholder="Location details, weather, behavior, etc."></textarea>
+                                  id="modal-notes" name="notes" rows="3"
+                                  placeholder="Location details, weather, behavior, etc."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary">
@@ -241,263 +252,265 @@
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 
+<!--suppress JSUnresolvedReference -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const mapContainer = document.getElementById('species-map');
-    if (!mapContainer) return;
+    document.addEventListener('DOMContentLoaded', function () {
+        const mapContainer = document.getElementById('species-map');
+        if (!mapContainer) return;
 
-    let mapInitialized = false;
+        let mapInitialized = false;
 
-    function initMap() {
-        if (mapInitialized) return;
-        mapInitialized = true;
+        function initMap() {
+            if (mapInitialized) return;
+            mapInitialized = true;
 
-        const gbifId = "{{ bird.gbif_id or '' }}";
-        const inatId = "{{ bird.inat_id or '' }}";
-        const cartoApiKey = "{{ carto_api_key or '' }}";
-        const statusEl = document.getElementById('map-status');
+            const gbifId = "{{ bird.gbif_id or '' }}";
+            const inatId = "{{ bird.inat_id or '' }}";
+            const cartoApiKey = "{{ carto_api_key or '' }}";
+            const statusEl = document.getElementById('map-status');
 
-        // 1. GBIF Dark Basemap
-        const gbifDark = L.tileLayer('https://tile.gbif.org/3857/omt/{z}/{x}/{y}@1x.png?style=gbif-dark', {
-            tileSize: 512,
-            zoomOffset: -1,
-            attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 16
-        });
+            // 1. GBIF Dark Basemap
+            const gbifDark = L.tileLayer('https://tile.gbif.org/3857/omt/{z}/{x}/{y}@1x.png?style=gbif-dark', {
+                tileSize: 512,
+                zoomOffset: -1,
+                attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 16
+            });
 
-        // 2. Standard OpenStreetMap Basemap
-        const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            tileSize: 256,
-            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19
-        });
-
-        const baseMaps = {
-            "Dark (GBIF)": gbifDark,
-            "Standard (OSM)": openStreetMap
-        };
-
-        if (cartoApiKey) {
-            const cartoDark = L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${cartoApiKey}`, {
+            // 2. Standard OpenStreetMap Basemap
+            const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 tileSize: 256,
-                attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                 maxZoom: 19
             });
-            baseMaps["CARTO Dark"] = cartoDark;
-        }
 
-        const map = L.map('species-map', {
-            center: [20, 0],
-            zoom: 2,
-            minZoom: 2,
-            layers: [openStreetMap]
-        });
+            const baseMaps = {
+                "Dark (GBIF)": gbifDark,
+                "Standard (OSM)": openStreetMap
+            };
 
-        const overlayMaps = {};
-
-        // GBIF Occurrence Density (Hex Binned - Vibrant Purple/Yellow)
-        if (gbifId) {
-            const gbifHexLayer = L.tileLayer(
-                `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&bin=hex&hexPerTile=50&style=purpleYellow.poly`, {
-                    tileSize: 512,
-                    zoomOffset: -1,
-                    opacity: 0.85,
-                    attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
-                    maxZoom: 16
-                }
-            );
-            overlayMaps["GBIF Density (Hex)"] = gbifHexLayer;
-
-            const gbifHeatmapLayer = L.tileLayer(
-                `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&style=orangeHeat.point`, {
-                    tileSize: 512,
-                    zoomOffset: -1,
-                    opacity: 0.8,
-                    attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
-                    maxZoom: 16
-                }
-            );
-            gbifHeatmapLayer.addTo(map);
-            overlayMaps["GBIF Heatmap (Points)"] = gbifHeatmapLayer;
-        }
-
-        // iNaturalist Distribution Layers
-        if (inatId) {
-            const inatHeatmapLayer = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
-                tileSize: 256,
-                opacity: 0.75,
-                attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
-                maxZoom: 18
-            });
-            if (!gbifId) {
-                inatHeatmapLayer.addTo(map);
+            if (cartoApiKey) {
+                baseMaps["CARTO Dark"] = L.tileLayer(`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${cartoApiKey}`, {
+                    tileSize: 256,
+                    attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                    maxZoom: 19
+                });
             }
-            overlayMaps["iNaturalist Heatmap"] = inatHeatmapLayer;
 
-            const inatRangeLayer = L.tileLayer(`https://api.inaturalist.org/v1/taxon_ranges/${inatId}/{z}/{x}/{y}.png`, {
-                tileSize: 256,
-                opacity: 0.65,
-                attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
-                maxZoom: 18
+            const map = L.map('species-map', {
+                center: [20, 0],
+                zoom: 2,
+                minZoom: 2,
+                layers: [openStreetMap]
             });
-            inatRangeLayer.addTo(map);
-            overlayMaps["iNaturalist Range"] = inatRangeLayer;
 
-            const inatPointsLayer = L.tileLayer(`https://api.inaturalist.org/v1/points/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
-                tileSize: 256,
-                opacity: 0.85,
-                attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
-                maxZoom: 18
-            });
-            overlayMaps["iNaturalist Sightings"] = inatPointsLayer;
-        }
+            const overlayMaps = {};
 
-        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
-        // Client-side LocalStorage bounds caching (30-day expiration, 0 Redis memory used)
-        const cacheKey = 'bird_bounds_' + (gbifId || inatId);
-        const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-        function applyBounds(bounds) {
-            if (bounds && bounds.length === 2) {
-                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 7 });
-                if (statusEl) statusEl.textContent = "Framed to distribution range";
-                setTimeout(() => map.invalidateSize(), 150);
-            }
-        }
-
-        function saveBoundsToCache(bounds) {
-            try {
-                localStorage.setItem(cacheKey, JSON.stringify({
-                    bounds: bounds,
-                    timestamp: Date.now()
-                }));
-            } catch (e) {}
-        }
-
-        function getCachedBounds() {
-            try {
-                const raw = localStorage.getItem(cacheKey);
-                if (!raw) return null;
-                const data = JSON.parse(raw);
-                if (data && data.bounds && (Date.now() - data.timestamp < CACHE_TTL_MS)) {
-                    return data.bounds;
-                }
-            } catch (e) {}
-            return null;
-        }
-
-        const cachedBounds = getCachedBounds();
-        if (cachedBounds) {
-            applyBounds(cachedBounds);
-        } else {
+            // GBIF Occurrence Density (Hex Binned - Vibrant Purple/Yellow)
             if (gbifId) {
-                fetch(`https://api.gbif.org/v1/occurrence/search?taxonKey=${gbifId}&hasCoordinate=true&limit=100`)
-                    .then(res => res.ok ? res.json() : null)
-                    .then(data => {
-                        if (data && data.results && data.results.length > 0) {
-                            const lats = data.results.map(r => r.decimalLatitude).filter(v => v !== undefined && v !== null);
-                            const lngs = data.results.map(r => r.decimalLongitude).filter(v => v !== undefined && v !== null);
-                            if (lats.length > 0 && lngs.length > 0) {
-                                const bounds = [
-                                    [Math.min(...lats), Math.min(...lngs)],
-                                    [Math.max(...lats), Math.max(...lngs)]
-                                ];
-                                applyBounds(bounds);
-                                saveBoundsToCache(bounds);
+                overlayMaps["GBIF Density (Hex)"] = L.tileLayer(
+                    `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&bin=hex&hexPerTile=50&style=purpleYellow.poly`, {
+                        tileSize: 512,
+                        zoomOffset: -1,
+                        opacity: 0.85,
+                        attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
+                        maxZoom: 16
+                    }
+                );
+
+                const gbifHeatmapLayer = L.tileLayer(
+                    `https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?srs=EPSG:3857&taxonKey=${gbifId}&style=orangeHeat.point`, {
+                        tileSize: 512,
+                        zoomOffset: -1,
+                        opacity: 0.8,
+                        attribution: '&copy; <a href="https://www.gbif.org/">GBIF</a>',
+                        maxZoom: 16
+                    }
+                );
+                gbifHeatmapLayer.addTo(map);
+                overlayMaps["GBIF Heatmap (Points)"] = gbifHeatmapLayer;
+            }
+
+            // iNaturalist Distribution Layers
+            if (inatId) {
+                const inatHeatmapLayer = L.tileLayer(`https://api.inaturalist.org/v1/colored_heatmap/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
+                    tileSize: 256,
+                    opacity: 0.75,
+                    attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
+                    maxZoom: 18
+                });
+                if (!gbifId) {
+                    inatHeatmapLayer.addTo(map);
+                }
+                overlayMaps["iNaturalist Heatmap"] = inatHeatmapLayer;
+
+                const inatRangeLayer = L.tileLayer(`https://api.inaturalist.org/v1/taxon_ranges/${inatId}/{z}/{x}/{y}.png`, {
+                    tileSize: 256,
+                    opacity: 0.65,
+                    attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
+                    maxZoom: 18
+                });
+                inatRangeLayer.addTo(map);
+                overlayMaps["iNaturalist Range"] = inatRangeLayer;
+
+                overlayMaps["iNaturalist Sightings"] = L.tileLayer(`https://api.inaturalist.org/v1/points/{z}/{x}/{y}.png?taxon_id=${inatId}`, {
+                    tileSize: 256,
+                    opacity: 0.85,
+                    attribution: '&copy; <a href="https://www.inaturalist.org">iNaturalist</a>',
+                    maxZoom: 18
+                });
+            }
+
+            L.control.layers(baseMaps, overlayMaps, {collapsed: false}).addTo(map);
+
+            // Client-side LocalStorage bounds caching (30-day expiration, 0 Redis memory used)
+            const cacheKey = 'bird_bounds_' + (gbifId || inatId);
+            const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+            function applyBounds(bounds) {
+                if (bounds && bounds.length === 2) {
+                    map.fitBounds(bounds, {padding: [40, 40], maxZoom: 7});
+                    if (statusEl) statusEl.textContent = "Framed to distribution range";
+                    setTimeout(() => map.invalidateSize(), 150);
+                }
+            }
+
+            function saveBoundsToCache(bounds) {
+                try {
+                    localStorage.setItem(cacheKey, JSON.stringify({
+                        bounds: bounds,
+                        timestamp: Date.now()
+                    }));
+                } catch (e) {
+                }
+            }
+
+            function getCachedBounds() {
+                try {
+                    const raw = localStorage.getItem(cacheKey);
+                    if (!raw) return null;
+                    const data = JSON.parse(raw);
+                    if (data && data.bounds && (Date.now() - data.timestamp < CACHE_TTL_MS)) {
+                        return data.bounds;
+                    }
+                } catch (e) {
+                }
+                return null;
+            }
+
+            const cachedBounds = getCachedBounds();
+            if (cachedBounds) {
+                applyBounds(cachedBounds);
+            } else {
+                if (gbifId) {
+                    fetch(`https://api.gbif.org/v1/occurrence/search?taxonKey=${gbifId}&hasCoordinate=true&limit=100`)
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => {
+                            if (data && data.results && data.results.length > 0) {
+                                const lats = data.results.map(r => r.decimalLatitude).filter(v => v !== undefined && v !== null);
+                                const lngs = data.results.map(r => r.decimalLongitude).filter(v => v !== undefined && v !== null);
+                                if (lats.length > 0 && lngs.length > 0) {
+                                    const bounds = [
+                                        [Math.min(...lats), Math.min(...lngs)],
+                                        [Math.max(...lats), Math.max(...lngs)]
+                                    ];
+                                    applyBounds(bounds);
+                                    saveBoundsToCache(bounds);
+                                }
                             }
-                        }
-                    })
-                    .catch(() => {});
-            } else if (inatId) {
-                fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${inatId}&per_page=100`)
-                    .then(res => res.ok ? res.json() : null)
-                    .then(data => {
-                        if (data && data.results && data.results.length > 0) {
-                            const coords = data.results
-                                .map(r => r.location ? r.location.split(',').map(Number) : null)
-                                .filter(c => c && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
-                            if (coords.length > 0) {
-                                const lats = coords.map(c => c[0]);
-                                const lngs = coords.map(c => c[1]);
-                                const bounds = [
-                                    [Math.min(...lats), Math.min(...lngs)],
-                                    [Math.max(...lats), Math.max(...lngs)]
-                                ];
-                                applyBounds(bounds);
-                                saveBoundsToCache(bounds);
+                        })
+                        .catch(() => {
+                        });
+                } else if (inatId) {
+                    fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${inatId}&per_page=100`)
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => {
+                            if (data && data.results && data.results.length > 0) {
+                                const coords = data.results
+                                    .map(r => r.location ? r.location.split(',').map(Number) : null)
+                                    .filter(c => c && c.length === 2 && !isNaN(c[0]) && !isNaN(c[1]));
+                                if (coords.length > 0) {
+                                    const lats = coords.map(c => c[0]);
+                                    const lngs = coords.map(c => c[1]);
+                                    const bounds = [
+                                        [Math.min(...lats), Math.min(...lngs)],
+                                        [Math.max(...lats), Math.max(...lngs)]
+                                    ];
+                                    applyBounds(bounds);
+                                    saveBoundsToCache(bounds);
+                                }
                             }
-                        }
-                    })
-                    .catch(() => {});
+                        })
+                        .catch(() => {
+                        });
+                }
             }
         }
-    }
 
-    // Lazy load the map with IntersectionObserver
-    if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver(function(entries, obs) {
-            entries.forEach(function(entry) {
-                if (entry.isIntersecting) {
-                    initMap();
-                    obs.disconnect();
-                }
-            });
-        }, { rootMargin: '200px' });
-        observer.observe(mapContainer);
-    } else {
-        // Fallback for older browsers
-        initMap();
-    }
-});
-
-// Set default date to today for the sighting form
-const today = new Date().toISOString().split('T')[0];
-const dateInput = document.getElementById('modal-date-sighted');
-if (dateInput) {
-    dateInput.value = today;
-}
-
-// Handle modal form submission
-const addSightingForm = document.getElementById('add-sighting-form');
-if (addSightingForm) {
-    addSightingForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const submitBtn = document.getElementById('btn-save-sighting');
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Saving...";
-
-        const payload = {
-            bird_id: document.getElementById('modal-bird-id').value,
-            scientific_name: document.getElementById('modal-sci-name').value,
-            common_name: document.getElementById('modal-common-name').value,
-            date_sighted: document.getElementById('modal-date-sighted').value,
-            notes: document.getElementById('modal-notes').value
-        };
-
-        fetch('/birds/api/add_sighting', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(res => res.json())
-        .then(data => {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Save to Life List";
-            if (data.success) {
-                $('#addSightingModal').modal('hide');
-                // Reload the page to show the updated life list status
-                window.location.reload();
-            } else {
-                alert("Error adding sighting: " + (data.error || "Unknown error"));
-            }
-        })
-        .catch(err => {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Save to Life List";
-            alert("Network error occurred while saving sighting.");
-        });
+        // Lazy load the map with IntersectionObserver
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(function (entries, obs) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        initMap();
+                        obs.disconnect();
+                    }
+                });
+            }, {rootMargin: '200px'});
+            observer.observe(mapContainer);
+        } else {
+            // Fallback for older browsers
+            initMap();
+        }
     });
-}
+
+    // Set default date to today for the sighting form
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('modal-date-sighted');
+    if (dateInput) {
+        dateInput.value = today;
+    }
+
+    // Handle modal form submission
+    const addSightingForm = document.getElementById('add-sighting-form');
+    if (addSightingForm) {
+        addSightingForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('btn-save-sighting');
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Saving...";
+
+            const payload = {
+                bird_id: document.getElementById('modal-bird-id').value,
+                scientific_name: document.getElementById('modal-sci-name').value,
+                common_name: document.getElementById('modal-common-name').value,
+                date_sighted: document.getElementById('modal-date-sighted').value,
+                notes: document.getElementById('modal-notes').value
+            };
+
+            fetch('/birds/api/add_sighting', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Save to Life List";
+                    if (data.success) {
+                        $('#addSightingModal').modal('hide');
+                        // Reload the page to show the updated life list status
+                        window.location.reload();
+                    } else {
+                        alert("Error adding sighting: " + (data.error || "Unknown error"));
+                    }
+                })
+                .catch(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Save to Life List";
+                    alert("Network error occurred while saving sighting.");
+                });
+        });
+    }
 </script>
 {% endblock %}
