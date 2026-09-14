@@ -520,9 +520,20 @@ def birds_image(filename):
         if resp.status_code != 200:
             return "Image not found", 404
 
-        response = make_response(resp.content)
+        # Generate ETag from content hash
+        import hashlib
+        content = resp.content
+        etag = f'"{hashlib.md5(content).hexdigest()}"'
+
+        # Check if client has cached version
+        if_none_match = request.headers.get('If-None-Match')
+        if if_none_match and if_none_match == etag:
+            return '', 304
+
+        response = make_response(content)
         response.mimetype = resp.headers.get("Content-Type", "image/avif")
         response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        response.headers["ETag"] = etag
         return response
     except Exception as e:
         LOG.error(f"Error fetching image from R2: {e}")
