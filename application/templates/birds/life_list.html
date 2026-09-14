@@ -11,9 +11,9 @@
 
     <div class="mb-3 d-flex align-items-center">
         {% if edit_mode %}
-            <a href="/birds?sort_by={{ sort_by }}" class="btn btn-secondary mr-2">Exit Edit Mode</a>
+            <a href="/birds" class="btn btn-secondary mr-2">Exit Edit Mode</a>
         {% else %}
-            <a href="/birds/edit?sort_by={{ sort_by }}" class="btn btn-primary mr-2">Edit Mode</a>
+            <a href="/birds/edit" class="btn btn-primary mr-2">Edit Mode</a>
         {% endif %}
         <a href="/birds/add" class="btn btn-success mr-2">Add Bird</a>
         <a href="/birds/near_me" class="btn btn-info mr-2">Add Bird Near Me</a>

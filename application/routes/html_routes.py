@@ -270,9 +270,8 @@ def birds_index():
     if bird_dao is None:
         return render_template("birds/not_configured.html")
 
-    sort_by = request.args.get("sort_by", "date_added_desc")
-    life_list = bird_dao.get_life_list(sort_by=sort_by)
-    return render_template("birds/life_list.html", life_list=life_list, edit_mode=False, sort_by=sort_by)
+    life_list = bird_dao.get_life_list()
+    return render_template("birds/life_list.html", life_list=life_list, edit_mode=False)
 
 
 @HTML_BLUEPRINT.route("/birds/edit")
@@ -281,9 +280,8 @@ def birds_edit():
     if bird_dao is None:
         return render_template("birds/not_configured.html")
 
-    sort_by = request.args.get("sort_by", "date_added_desc")
-    life_list = bird_dao.get_life_list(sort_by=sort_by)
-    return render_template("birds/life_list.html", life_list=life_list, edit_mode=True, sort_by=sort_by)
+    life_list = bird_dao.get_life_list()
+    return render_template("birds/life_list.html", life_list=life_list, edit_mode=True)
 
 
 @HTML_BLUEPRINT.route("/birds/add", methods=["GET", "POST"])

@@ -97,41 +97,14 @@ class BirdDao:
         docs = self.birds_collection.find({"$or": clauses})
         return [Bird.from_mongo(doc) for doc in docs]
 
-    def get_life_list(self, sort_by: str = "date_added_desc") -> list[LifeListEntry]:
-        """Get all entries from the life list.
-        
-        Args:
-            sort_by: Sorting method - 'date_added_desc' (newest first), 'date_added_asc' (oldest first),
-                     'date_sighted_desc' (most recent sighting first), 'date_sighted_asc' (oldest sighting first),
-                     'name_asc' (A-Z by common name), 'name_desc' (Z-A by common name)
-        """
-        cache_key = f"life_list_{sort_by}"
+    def get_life_list(self) -> list[LifeListEntry]:
+        """Get all entries from the life list. Sorting is handled client-side."""
+        cache_key = "life_list"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
         entries = [LifeListEntry.from_mongo(doc) for doc in self.life_list_collection.find()]
-        
-        # Sort entries based on sort_by parameter
-        if sort_by == "date_added_desc":
-            # Sort by MongoDB _id (which contains timestamp) in descending order (newest first)
-            entries.sort(key=lambda x: str(x.id), reverse=True)
-        elif sort_by == "date_added_asc":
-            # Sort by MongoDB _id in ascending order (oldest first)
-            entries.sort(key=lambda x: str(x.id))
-        elif sort_by == "date_sighted_desc":
-            # Sort by date_sighted in descending order (most recent sighting first)
-            entries.sort(key=lambda x: x.date_sighted, reverse=True)
-        elif sort_by == "date_sighted_asc":
-            # Sort by date_sighted in ascending order (oldest sighting first)
-            entries.sort(key=lambda x: x.date_sighted)
-        elif sort_by == "name_asc":
-            # Sort by common name A-Z
-            entries.sort(key=lambda x: x.common_name.lower())
-        elif sort_by == "name_desc":
-            # Sort by common name Z-A
-            entries.sort(key=lambda x: x.common_name.lower(), reverse=True)
-        
         self._set_cached(cache_key, entries)
         return entries
 
