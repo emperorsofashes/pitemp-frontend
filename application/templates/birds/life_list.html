@@ -90,13 +90,7 @@
 </div>
 
 <script>
-// Reset dropdown to default on page load
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('sort-select').value = 'date_added_desc';
-});
-
-document.getElementById('sort-select').addEventListener('change', function() {
-    const sortValue = this.value;
+function sortLifeList(sortValue) {
     const tbody = document.getElementById('life-list-body');
     const rows = Array.from(tbody.querySelectorAll('tr'));
     
@@ -127,6 +121,16 @@ document.getElementById('sort-select').addEventListener('change', function() {
     });
     
     rows.forEach(row => tbody.appendChild(row));
+}
+
+// Apply default sorting on page load
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('sort-select').value = 'date_added_desc';
+    sortLifeList('date_added_desc');
+});
+
+document.getElementById('sort-select').addEventListener('change', function() {
+    sortLifeList(this.value);
 });
 </script>
 {% endblock %}
