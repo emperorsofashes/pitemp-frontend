@@ -45,7 +45,12 @@
             <br><small><strong>Notes:</strong> {{ life_list_entry.notes }}</small>
             {% endif %}
         </div>
-        <a href="/birds/edit_entry/{{ life_list_entry.id }}" class="btn btn-warning btn-sm">Edit Sighting</a>
+        <div>
+            <a href="/birds/edit_entry/{{ life_list_entry.id }}" class="btn btn-warning btn-sm">Edit Sighting</a>
+            <form action="/birds/delete/{{ life_list_entry.id }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this sighting?');">
+                <button type="submit" class="btn btn-danger btn-sm">Delete Sighting</button>
+            </form>
+        </div>
     </div>
     {% else %}
     <div id="sighting-status-card" class="alert alert-info d-flex justify-content-between align-items-center mb-4">
