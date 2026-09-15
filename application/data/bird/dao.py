@@ -33,11 +33,18 @@ class BirdDao:
         LOG.info(f"Connected to database: {BIRD_DB_NAME}")
 
     def _get_cached(self, key: str) -> Any | None:
-        cached = self.cache.get(key)
-        return pickle.loads(cached) if cached else None
+        try:
+            cached = self.cache.get(key)
+            return pickle.loads(cached) if cached else None
+        except Exception as e:
+            LOG.warning(f"Cache get failed for key {key}: {e}")
+            return None
 
     def _set_cached(self, key: str, value: Any) -> None:
-        self.cache.set(key, pickle.dumps(value), ex=BIRD_CACHE_TTL)
+        try:
+            self.cache.set(key, pickle.dumps(value), ex=BIRD_CACHE_TTL)
+        except Exception as e:
+            LOG.warning(f"Cache set failed for key {key}: {e}")
 
     def get_all_birds(self) -> list[Bird]:
         """Get all bird species from the birds collection."""
@@ -151,7 +158,10 @@ class BirdDao:
             "notes": notes,
         }
         result = self.life_list_collection.insert_one(document)
-        self.cache.delete("life_list")
+        try:
+            self.cache.delete("life_list")
+        except Exception as e:
+            LOG.warning(f"Cache delete failed after adding to life list: {e}")
         return str(result.inserted_id)
 
     def update_life_list_entry(self, entry_id: str, date_sighted: datetime, notes: str | None = None) -> bool:
@@ -164,11 +174,17 @@ class BirdDao:
             {"_id": ObjectId(entry_id)},
             {"$set": update_doc},
         )
-        self.cache.delete("life_list")
+        try:
+            self.cache.delete("life_list")
+        except Exception as e:
+            LOG.warning(f"Cache delete failed after updating life list entry: {e}")
         return result.modified_count > 0
 
     def delete_from_life_list(self, entry_id: str) -> bool:
         """Delete an entry from the life list."""
         result = self.life_list_collection.delete_one({"_id": ObjectId(entry_id)})
-        self.cache.delete("life_list")
+        try:
+            self.cache.delete("life_list")
+        except Exception as e:
+            LOG.warning(f"Cache delete failed after deleting from life list: {e}")
         return result.deleted_count > 0
