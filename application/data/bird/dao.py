@@ -49,22 +49,35 @@ class BirdDao:
             LOG.warning(f"Cache set failed for key {key}: {e}")
 
     def _retry_cache_delete_async(self, key: str, max_retries: int = 3, initial_delay: float = 1.0) -> None:
-        """Retry cache delete operation in background thread with exponential backoff."""
-        def _retry():
+        """Retry cache delete operation: first sync (3 attempts), then async with exponential backoff."""
+        # First try synchronously up to 3 times
+        for attempt in range(max_retries):
+            try:
+                self.cache.delete(key)
+                LOG.info(f"Cache delete succeeded for key {key} on sync attempt {attempt + 1}")
+                return
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    LOG.warning(f"Cache delete failed for key {key} on sync attempt {attempt + 1}: {e}")
+                else:
+                    LOG.warning(f"Cache delete failed for key {key} after {max_retries} sync attempts, switching to async retry")
+        
+        # If all sync attempts failed, retry asynchronously
+        def _async_retry():
             for attempt in range(max_retries):
                 try:
                     self.cache.delete(key)
-                    LOG.info(f"Cache delete succeeded for key {key} on attempt {attempt + 1}")
+                    LOG.info(f"Cache delete succeeded for key {key} on async attempt {attempt + 1}")
                     return
                 except Exception as e:
                     if attempt < max_retries - 1:
                         delay = initial_delay * (2 ** attempt)
-                        LOG.warning(f"Cache delete failed for key {key} on attempt {attempt + 1}, retrying in {delay}s: {e}")
+                        LOG.warning(f"Cache delete failed for key {key} on async attempt {attempt + 1}, retrying in {delay}s: {e}")
                         time.sleep(delay)
                     else:
-                        LOG.error(f"Cache delete failed for key {key} after {max_retries} attempts: {e}")
+                        LOG.error(f"Cache delete failed for key {key} after {max_retries} async attempts: {e}")
         
-        thread = threading.Thread(target=_retry, daemon=True)
+        thread = threading.Thread(target=_async_retry, daemon=True)
         thread.start()
 
     def get_all_birds(self) -> list[Bird]:
