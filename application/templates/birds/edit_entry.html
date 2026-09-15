@@ -2,6 +2,7 @@
 
 {% block header %}
     <title>Edit Bird Sighting</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 {% endblock %}
 
 {% block content %}
@@ -18,7 +19,7 @@
             <form action="/birds/edit_entry/{{ entry.id }}" method="POST">
                 <div class="form-group">
                     <label for="date_sighted">Date Sighted:</label>
-                    <input type="date" name="date_sighted" id="date_sighted" class="form-control" 
+                    <input type="text" name="date_sighted" id="date_sighted" class="form-control" 
                            value="{{ entry.date_sighted.strftime('%Y-%m-%d') }}" required>
                 </div>
                 
@@ -33,4 +34,12 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+flatpickr("#date_sighted", {
+    dateFormat: "Y-m-d",
+    allowInput: true
+});
+</script>
 {% endblock %}

@@ -2,6 +2,7 @@
 
 {% block header %}
     <title>Add Bird to Life List</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 {% endblock %}
 
 {% block content %}
@@ -85,7 +86,7 @@
 
                     <div class="form-group">
                         <label for="date_sighted">Date Sighted:</label>
-                        <input type="date" name="date_sighted" id="date_sighted" class="form-control" required>
+                        <input type="text" name="date_sighted" id="date_sighted" class="form-control" required>
                     </div>
 
                     <div class="form-group">
@@ -111,13 +112,21 @@ function showAddForm(birdId, scientificName, commonName) {
     document.getElementById('common_name').value = commonName;
     document.getElementById('form_bird_name').textContent = commonName;
     document.getElementById('addFormContainer').style.display = 'block';
-    document.getElementById('date_sighted').valueAsDate = new Date();
+    document.getElementById('date_sighted').value = new Date().toISOString().split('T')[0];
     window.scrollTo(0, document.body.scrollHeight);
 }
 
 function hideAddForm() {
     document.getElementById('addFormContainer').style.display = 'none';
 }
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+// Initialize Flatpickr
+flatpickr("#date_sighted", {
+    dateFormat: "Y-m-d",
+    allowInput: true
+});
 
 document.getElementById('addSightingForm').addEventListener('submit', function(e) {
     e.preventDefault();
