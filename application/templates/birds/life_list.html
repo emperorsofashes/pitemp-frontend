@@ -132,13 +132,16 @@ function sortLifeList(sortValue) {
     rows.forEach(row => tbody.appendChild(row));
 }
 
-// Apply default sorting on page load
+// Apply saved sorting on page load, or default if none saved
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('sort-select').value = 'date_added_desc';
-    sortLifeList('date_added_desc');
+    const savedSort = localStorage.getItem('lifeListSort');
+    const sortValue = savedSort || 'date_added_desc';
+    document.getElementById('sort-select').value = sortValue;
+    sortLifeList(sortValue);
 });
 
 document.getElementById('sort-select').addEventListener('change', function() {
+    localStorage.setItem('lifeListSort', this.value);
     sortLifeList(this.value);
 });
 </script>
