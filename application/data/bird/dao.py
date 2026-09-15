@@ -1,5 +1,7 @@
 import logging
 import pickle
+import threading
+import time
 from datetime import datetime
 from typing import Any
 
@@ -45,6 +47,25 @@ class BirdDao:
             self.cache.set(key, pickle.dumps(value), ex=BIRD_CACHE_TTL)
         except Exception as e:
             LOG.warning(f"Cache set failed for key {key}: {e}")
+
+    def _retry_cache_delete_async(self, key: str, max_retries: int = 3, initial_delay: float = 1.0) -> None:
+        """Retry cache delete operation in background thread with exponential backoff."""
+        def _retry():
+            for attempt in range(max_retries):
+                try:
+                    self.cache.delete(key)
+                    LOG.info(f"Cache delete succeeded for key {key} on attempt {attempt + 1}")
+                    return
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        delay = initial_delay * (2 ** attempt)
+                        LOG.warning(f"Cache delete failed for key {key} on attempt {attempt + 1}, retrying in {delay}s: {e}")
+                        time.sleep(delay)
+                    else:
+                        LOG.error(f"Cache delete failed for key {key} after {max_retries} attempts: {e}")
+        
+        thread = threading.Thread(target=_retry, daemon=True)
+        thread.start()
 
     def get_all_birds(self) -> list[Bird]:
         """Get all bird species from the birds collection."""
@@ -158,10 +179,7 @@ class BirdDao:
             "notes": notes,
         }
         result = self.life_list_collection.insert_one(document)
-        try:
-            self.cache.delete("life_list")
-        except Exception as e:
-            LOG.warning(f"Cache delete failed after adding to life list: {e}")
+        self._retry_cache_delete_async("life_list")
         return str(result.inserted_id)
 
     def update_life_list_entry(self, entry_id: str, date_sighted: datetime, notes: str | None = None) -> bool:
@@ -174,17 +192,11 @@ class BirdDao:
             {"_id": ObjectId(entry_id)},
             {"$set": update_doc},
         )
-        try:
-            self.cache.delete("life_list")
-        except Exception as e:
-            LOG.warning(f"Cache delete failed after updating life list entry: {e}")
+        self._retry_cache_delete_async("life_list")
         return result.modified_count > 0
 
     def delete_from_life_list(self, entry_id: str) -> bool:
         """Delete an entry from the life list."""
         result = self.life_list_collection.delete_one({"_id": ObjectId(entry_id)})
-        try:
-            self.cache.delete("life_list")
-        except Exception as e:
-            LOG.warning(f"Cache delete failed after deleting from life list: {e}")
+        self._retry_cache_delete_async("life_list")
         return result.deleted_count > 0
