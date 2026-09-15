@@ -121,9 +121,13 @@ function sortLifeList(sortValue) {
             case 'scientific_name_desc':
                 return bScientificName.localeCompare(aScientificName);
             case 'date_sighted_desc':
-                return new Date(b.dataset.dateSighted) - new Date(a.dataset.dateSighted);
+                const dateDiffDesc = new Date(b.dataset.dateSighted) - new Date(a.dataset.dateSighted);
+                if (dateDiffDesc !== 0) return dateDiffDesc;
+                return aCommonName.localeCompare(bCommonName);
             case 'date_sighted_asc':
-                return new Date(a.dataset.dateSighted) - new Date(b.dataset.dateSighted);
+                const dateDiffAsc = new Date(a.dataset.dateSighted) - new Date(b.dataset.dateSighted);
+                if (dateDiffAsc !== 0) return dateDiffAsc;
+                return aCommonName.localeCompare(bCommonName);
             default:
                 return 0;
         }
