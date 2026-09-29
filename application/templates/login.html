@@ -1,31 +1,57 @@
 {% extends "base.html" %}
 
 {% block header %}
-<title>Login</title>
+<title>Admin Login</title>
+<style>
+    .form-control:focus {
+        background-color: #343a40;
+        color: #fff;
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="text-center">Admin Login</h3>
+        <div class="col-md-6 col-lg-5">
+            <div class="card bg-dark text-white border-secondary shadow">
+                <div class="card-header border-secondary text-center">
+                    <h3 class="mb-0">Admin Login</h3>
                 </div>
                 <div class="card-body">
+                    {% if success %}
+                    <div class="alert alert-success" role="alert">
+                        {{ success }}
+                    </div>
+                    {% elif session.get('authenticated') %}
+                    <div class="alert alert-info" role="alert">
+                        You are currently authenticated.
+                    </div>
+                    {% endif %}
+
                     {% if error %}
                     <div class="alert alert-danger" role="alert">
                         {{ error }}
                     </div>
                     {% endif %}
+
+                    {% if session.get('authenticated') %}
+                    <form action="/logout" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-outline-danger btn-block">Logout</button>
+                    </form>
+                    {% else %}
                     <form method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required autofocus>
+                            <label for="password" class="font-weight-bold">Password</label>
+                            <input type="password" class="form-control bg-dark text-white border-secondary" id="password" name="password" required autofocus placeholder="Enter password">
                         </div>
                         <button type="submit" class="btn btn-primary btn-block">Login</button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>

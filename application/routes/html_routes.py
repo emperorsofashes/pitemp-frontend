@@ -1,10 +1,10 @@
 import logging
 import secrets
 from datetime import datetime
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 import requests
-from flask import Blueprint, current_app, jsonify, make_response, redirect, render_template, request, session
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
 
 from application import DISKS_DATABASE_CONFIG_KEY, DisksDao
 from application.constants.app_constants import (
@@ -525,29 +525,30 @@ def _is_safe_redirect_url(url: str) -> bool:
 @HTML_BLUEPRINT.route("/login", methods=["GET", "POST"])
 def login():
     admin_password = current_app.config.get("ADMIN_PASSWORD")
-    
+
     if not admin_password:
         return "Authentication not configured", 500
-    
+
     if request.method == "POST":
         password = request.form.get("password")
-        
+
         # Use secrets.compare_digest for secure password comparison
         if password is not None and secrets.compare_digest(password, admin_password):
             session["authenticated"] = True
             session.permanent = False
-            
-            # Redirect to the page the user was trying to access
-            next_url = session.pop("next", "/")
-            
-            # Validate the redirect URL to prevent open redirect attacks
-            if not _is_safe_redirect_url(next_url):
-                next_url = "/"
-            
-            return redirect(next_url)
+
+            # Redirect to the page the user was trying to access if one was stored
+            next_url = session.pop("next", None)
+
+            # Validate the redirect URL to prevent open redirect attacks or loops
+            if next_url and _is_safe_redirect_url(next_url) and next_url != "/login":
+                return redirect(next_url)
+
+            # No valid destination was stored, so go to the site root
+            return redirect("/")
         else:
             return render_template("login.html", error="Invalid password")
-    
+
     return render_template("login.html")
 
 

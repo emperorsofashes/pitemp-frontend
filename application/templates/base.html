@@ -26,6 +26,9 @@
     <a href="/games">Games</a>
     <span class="header-separator">|</span>
     <a href="/birds">Birds</a>
+    {% if session.get('authenticated') %}
+    <span class="auth-indicator text-success font-weight-bold ml-auto mr-3" title="Authenticated" style="font-size: 1.2rem; line-height: 1;">✓</span>
+    {% endif %}
 </header>
 <div id="content-block-div" class="h-100">
     {% block content %}
