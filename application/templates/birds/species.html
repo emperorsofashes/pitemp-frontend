@@ -47,21 +47,30 @@
             {% endif %}
         </div>
         <div>
-            <a href="/birds/edit_entry/{{ life_list_entry.id }}" class="btn btn-warning btn-sm">Edit Sighting</a>
-            <form action="/birds/delete/{{ life_list_entry.id }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this sighting?');">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn btn-danger btn-sm">Delete Sighting</button>
-            </form>
+            {% if session.get('authenticated') %}
+                <a href="/birds/edit_entry/{{ life_list_entry.id }}" class="btn btn-warning btn-sm">Edit Sighting</a>
+                <form action="/birds/delete/{{ life_list_entry.id }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this sighting?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-danger btn-sm">Delete Sighting</button>
+                </form>
+            {% else %}
+                <a href="{{ url_for('routes_html.login', next=request.full_path.rstrip('?')) }}"
+                   class="btn btn-primary btn-sm">Login to edit</a>
+            {% endif %}
         </div>
     </div>
     {% else %}
-    <div id="sighting-status-card" class="alert alert-info d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <strong>Not on your life list yet.</strong> Add this bird when you spot it!
+        <div id="sighting-status-card" class="alert alert-info d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <strong>Not on your life list yet.</strong> Add this bird when you spot it!
+                </div>
+                {% if session.get('authenticated') %}
+                <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addSightingModal">Add to Life List</button>
+                {% else %}
+                <a href="{{ url_for('routes_html.login', next=request.full_path.rstrip('?')) }}"
+                       class="btn btn-primary btn-sm">Login to add</a>
+                {% endif %}
         </div>
-        <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addSightingModal">Add to Life List
-        </button>
-    </div>
     {% endif %}
 
     <div class="row">
