@@ -282,6 +282,12 @@ def birds_edit():
     if bird_dao is None:
         return render_template("birds/not_configured.html")
 
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
     life_list = bird_dao.get_life_list()
     return render_template("birds/life_list.html", life_list=life_list, edit_mode=True)
 
@@ -331,6 +337,12 @@ def birds_near_me():
     bird_dao = _get_birds_dao()
     if bird_dao is None:
         return render_template("birds/not_configured.html")
+
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
 
     return render_template("birds/near_me.html")
 
