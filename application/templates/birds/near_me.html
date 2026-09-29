@@ -419,12 +419,11 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => {
             if (res.status === 401) {
                 window.location.href = '/login';
-                return;
+                return new Promise(() => {});
             }
             return res.json();
         })
         .then(data => {
-            if (!data) return;
             submitBtn.disabled = false;
             submitBtn.textContent = "Save to Life List";
             if (data.success) {

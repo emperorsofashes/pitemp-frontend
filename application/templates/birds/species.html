@@ -486,6 +486,12 @@
         dateInput.value = today;
     }
 
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
     // Handle modal form submission
     const addSightingForm = document.getElementById('add-sighting-form');
     if (addSightingForm) {
@@ -517,26 +523,25 @@
                 .then(res => {
                     if (res.status === 401) {
                         window.location.href = '/login';
-                        return;
+                        return new Promise(() => {});
                     }
                     return res.json();
                 })
                 .then(data => {
-                    if (!data) return;
                     submitBtn.disabled = false;
                     submitBtn.textContent = "Save to Life List";
                     if (data.success) {
                         $('#addSightingModal').modal('hide');
                         // Update the sighting status card to show bird is on life list
                         const statusCard = document.getElementById('sighting-status-card');
-                        const dateText = payload.date_sighted;
-                        const notesText = payload.notes ? `<br><small><strong>Notes:</strong> ${payload.notes}</small>` : '';
+                        const dateText = escapeHtml(payload.date_sighted);
+                        const notesText = payload.notes ? `<br><small><strong>Notes:</strong> ${escapeHtml(payload.notes)}</small>` : '';
                         statusCard.className = 'alert alert-success d-flex justify-content-between align-items-center mb-4';
                         statusCard.innerHTML = `
                             <div>
-                                <strong>✓ ${payload.common_name} added to your life list!</strong> Sighted on <strong>${dateText}</strong>${notesText}
+                                <strong>✓ ${escapeHtml(payload.common_name)} added to your life list!</strong> Sighted on <strong>${dateText}</strong>${notesText}
                             </div>
-                            <a href="/birds/edit_entry/${data.entry_id}" class="btn btn-warning btn-sm">Edit Sighting</a>
+                            <a href="/birds/edit_entry/${encodeURIComponent(data.entry_id)}" class="btn btn-warning btn-sm">Edit Sighting</a>
                         `;
                     } else {
                         alert("Error adding sighting: " + (data.error || "Unknown error"));
