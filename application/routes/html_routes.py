@@ -535,7 +535,7 @@ def login():
         # Use secrets.compare_digest for secure password comparison
         if password is not None and secrets.compare_digest(password, admin_password):
             session["authenticated"] = True
-            session.permanent = False
+            session.permanent = True
 
             # Redirect to the page the user was trying to access if one was stored
             next_url = session.pop("next", None)

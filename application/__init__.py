@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import timedelta
 from urllib.parse import urlparse
 
 import valkey
@@ -12,7 +13,7 @@ from application.constants.app_constants import (
     DATABASE_CONFIG_KEY,
     BEERS_DATABASE_CONFIG_KEY,
     DISKS_DATABASE_CONFIG_KEY,
-    BIRDS_DATABASE_CONFIG_KEY,
+    BIRDS_DATABASE_CONFIG_KEY, SESSION_LIFETIME_DAYS,
 )
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
@@ -48,6 +49,8 @@ def create_flask_app() -> Flask:
 
     # Set custom JSON encoder to handle MongoDB ObjectID
     app.json_encoder = CustomJsonEncoder
+
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=SESSION_LIFETIME_DAYS)
 
     # Validate required environment variables before initializing databases
     secret_key = os.environ.get("SECRET_KEY")
