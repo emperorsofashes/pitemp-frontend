@@ -82,13 +82,16 @@ def create_flask_app() -> Flask:
         LOG.warning("MONGO_BIRD_USER or MONGO_BIRD_PASSWORD not set, bird functionality will not be available")
         app.config[BIRDS_DATABASE_CONFIG_KEY] = None
 
-    # This must be set in the environment as a secret
-    app.secret_key = os.environ["SECRET_KEY"]
-
-    # Load admin password for authentication
+    secret_key = os.environ.get("SECRET_KEY")
     admin_password = os.environ.get("ADMIN_PASSWORD")
+
+    if not secret_key:
+        raise RuntimeError("SECRET_KEY environment variable is required")
+
     if not admin_password:
-        LOG.warning("ADMIN_PASSWORD not set in environment - write operations will not be protected")
+        raise RuntimeError("ADMIN_PASSWORD environment variable is required")
+
+    app.config["SECRET_KEY"] = secret_key
     app.config["ADMIN_PASSWORD"] = admin_password
 
     # Configure secure session settings for production (HTTPS)
