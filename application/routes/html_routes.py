@@ -4,7 +4,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
 from application import DISKS_DATABASE_CONFIG_KEY, DisksDao
 from application.constants.app_constants import (
@@ -305,6 +305,13 @@ def birds_add():
 
         bird_dao.add_to_life_list(bird_id, scientific_name, common_name, date_sighted, notes)
         return redirect("/birds")
+
+    # Require login first
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
 
     query = request.args.get("query", "")
     birds = bird_dao.search_birds(query) if query else []
