@@ -48,6 +48,19 @@ def create_flask_app() -> Flask:
     # Set custom JSON encoder to handle MongoDB ObjectID
     app.json_encoder = CustomJsonEncoder
 
+    # Validate required environment variables before initializing databases
+    secret_key = os.environ.get("SECRET_KEY")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+
+    if not secret_key:
+        raise RuntimeError("SECRET_KEY environment variable is required")
+
+    if not admin_password:
+        raise RuntimeError("ADMIN_PASSWORD environment variable is required")
+
+    app.config["SECRET_KEY"] = secret_key
+    app.config["ADMIN_PASSWORD"] = admin_password
+
     cache_url = os.environ.get("REDIS_DATA_URL")
     if cache_url:
         cache = valkey.Valkey.from_url(cache_url)
@@ -81,18 +94,6 @@ def create_flask_app() -> Flask:
     else:
         LOG.warning("MONGO_BIRD_USER or MONGO_BIRD_PASSWORD not set, bird functionality will not be available")
         app.config[BIRDS_DATABASE_CONFIG_KEY] = None
-
-    secret_key = os.environ.get("SECRET_KEY")
-    admin_password = os.environ.get("ADMIN_PASSWORD")
-
-    if not secret_key:
-        raise RuntimeError("SECRET_KEY environment variable is required")
-
-    if not admin_password:
-        raise RuntimeError("ADMIN_PASSWORD environment variable is required")
-
-    app.config["SECRET_KEY"] = secret_key
-    app.config["ADMIN_PASSWORD"] = admin_password
 
     # Configure secure session settings for production (HTTPS)
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() == "true"
