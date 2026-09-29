@@ -530,20 +530,12 @@ def login():
         return "Authentication not configured", 500
     
     if request.method == "POST":
-        # Support both form data (browser) and JSON (API)
-        if request.is_json:
-            password = request.json.get("password")
-        else:
-            password = request.form.get("password")
+        password = request.form.get("password")
         
         # Use secrets.compare_digest for secure password comparison
-        if secrets.compare_digest(str(password), str(admin_password)):
+        if password is not None and secrets.compare_digest(password, admin_password):
             session["authenticated"] = True
             session.permanent = False
-            
-            # For API requests, return JSON instead of redirect
-            if request.is_json:
-                return jsonify({"success": True, "authenticated": True})
             
             # Redirect to the page the user was trying to access
             next_url = session.pop("next", "/")
@@ -554,9 +546,6 @@ def login():
             
             return redirect(next_url)
         else:
-            # For API requests, return JSON error
-            if request.is_json:
-                return jsonify({"success": False, "error": "Invalid password"}), 401
             return render_template("login.html", error="Invalid password")
     
     return render_template("login.html")
