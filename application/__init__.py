@@ -2,7 +2,7 @@ import logging
 import os
 
 import valkey
-from flask import Flask, session
+from flask import Flask, session, request, jsonify, redirect
 from flask_compress import Compress
 from flask_wtf.csrf import CSRFProtect
 from pymongo import MongoClient
@@ -16,8 +16,8 @@ from application.constants.app_constants import (
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.custom_json_encoder import CustomJsonEncoder
-from application.data.temperature.dao import ApplicationDao
 from application.data.disks.dao import DisksDao
+from application.data.temperature.dao import ApplicationDao
 from application.routes.html_routes import HTML_BLUEPRINT
 
 logging.basicConfig(level=logging.INFO)
@@ -31,9 +31,9 @@ CSRF = CSRFProtect()
 
 
 def bytes_to_display(value: int) -> str:
-    unit = 1024**4  # Start with terabytes
+    unit = 1024 ** 4  # Start with terabytes
     if value < unit:
-        unit = 1024**3  # Switch to gigabytes if less than 1 TB
+        unit = 1024 ** 3  # Switch to gigabytes if less than 1 TB
         return f"{value / unit:.2f} GB"
     return f"{value / unit:.2f} TB"
 
@@ -84,7 +84,7 @@ def create_flask_app() -> Flask:
 
     # This must be set in the environment as a secret
     app.secret_key = os.environ["SECRET_KEY"]
-    
+
     # Load admin password for authentication
     admin_password = os.environ.get("ADMIN_PASSWORD")
     if not admin_password:
@@ -95,7 +95,7 @@ def create_flask_app() -> Flask:
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() == "true"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-    
+
     # Initialize CSRF protection
     CSRF.init_app(app)
 
@@ -104,34 +104,33 @@ def create_flask_app() -> Flask:
 
     # Register blueprints to add routes to the app
     app.register_blueprint(HTML_BLUEPRINT)
-    
+
     # Add before_request hook for automatic write protection
     @app.before_request
     def require_auth_for_writes():
-        from flask import request, jsonify, redirect, session
-        
         # Public endpoints that don't require auth
         public_endpoints = {'login', 'static'}
         if request.endpoint in public_endpoints:
             return None
-            
-        # Allow GET, HEAD, OPTIONS requests (read-only)
+
+        # Allow read-only requests
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             return None
-            
-        # Check if user is authenticated
+
+        # Authenticated users may perform writes
         if session.get('authenticated'):
             return None
-            
-        # Unauthenticated write request
-        # Check if this is an API/fetch request (expects JSON response)
-        if request.is_json or (request.accept_mimetypes and 
-                               request.accept_mimetypes.accept_json and 
-                               not request.accept_mimetypes.accept_html):
+
+        # API/fetch request
+        if request.is_json or (
+                request.accept_mimetypes
+                and request.accept_mimetypes.accept_json
+                and not request.accept_mimetypes.accept_html
+        ):
             return jsonify({'error': 'Authentication required'}), 401
-        
-        # Browser request - redirect to login with return URL
-        session['next'] = request.url
+
+        # Browser request
+        session['next'] = request.full_path.rstrip('?')
         return redirect('/login')
 
     return app
