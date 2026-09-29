@@ -130,6 +130,7 @@
                 </button>
             </div>
             <form id="add-sighting-form">
+                <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <input type="hidden" id="modal-bird-id" name="bird_id">
                     <input type="hidden" id="modal-sci-name" name="scientific_name">
@@ -259,15 +260,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 locationText.textContent = errMessage;
                 showError(errMessage);
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">
-                            Location access is required to show nearby birds. Click <strong>Manual Coords</strong> above to enter a location.
-                        </td>
-                    </tr>
-                `;
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000
+            }
         );
     }
 
@@ -275,6 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentLat === null || currentLng === null) return;
 
         clearError();
+        const radius = radiusSelect.value;
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="text-center py-5 text-muted">
@@ -284,14 +283,13 @@ document.addEventListener('DOMContentLoaded', function() {
             </tr>
         `;
 
-        const radius = radiusSelect.value;
-        const url = `/birds/nearby_birds?lat=${encodeURIComponent(currentLat)}&lng=${encodeURIComponent(currentLng)}&radius=${radius}`;
+        const url = `/birds/api/near_me?lat=${encodeURIComponent(currentLat)}&lng=${encodeURIComponent(currentLng)}&dist=${encodeURIComponent(radius)}`;
 
         fetch(url)
             .then(res => res.json())
             .then(data => {
                 if (data.error) {
-                    showError("Error: " + data.error);
+                    showError(data.error);
                     tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">${data.error}</td></tr>`;
                     return;
                 }
@@ -299,22 +297,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderTable();
             })
             .catch(() => {
-                showError("Network error while fetching nearby species.");
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load nearby species.</td></tr>`;
+                showError("Network error while fetching nearby birds. Please try again.");
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load nearby birds.</td></tr>`;
             });
     }
 
     function renderTable() {
-        const hideUnseen = filterUnseen.checked;
-        const filtered = hideUnseen ? birdsData.filter(b => !b.on_life_list) : birdsData;
+        let displayBirds = birdsData;
+        if (filterUnseen.checked) {
+            displayBirds = displayBirds.filter(b => !b.on_life_list);
+        }
 
-        resultsCount.textContent = `Showing ${filtered.length} of ${birdsData.length} species`;
+        const totalSpecies = birdsData.length;
+        const seenCount = birdsData.filter(b => b.on_life_list).length;
+        resultsCount.textContent = `Showing ${displayBirds.length} of ${totalSpecies} species (${seenCount} already on Life List)`;
 
-        if (filtered.length === 0) {
+        if (displayBirds.length === 0) {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="5" class="text-center py-4 text-muted">
-                        ${hideUnseen ? 'All nearby species are already on your life list!' : 'No bird sightings found in this radius.'}
+                        ${birdsData.length === 0 ? "No bird observations found for this area and radius." : "All nearby species are already on your life list! Congratulations!"}
                     </td>
                 </tr>
             `;
@@ -322,53 +324,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         let html = '';
-        filtered.forEach((bird, idx) => {
-            const rank = idx + 1;
-            const thumbImg = bird.thumb_url
+        displayBirds.forEach((bird, idx) => {
+            const thumbHtml = bird.thumb_url
                 ? `<img src="${bird.thumb_url}" alt="${bird.common_name}" class="bird-thumb-img" loading="lazy">`
-                : `<div class="bg-secondary text-muted d-flex align-items-center justify-content-center bird-thumb-img small">No photo</div>`;
+                : `<div class="bg-secondary bird-thumb-img d-flex align-items-center justify-content-center text-muted small">No pic</div>`;
 
-            const nameLink = bird.bird_id
-                ? `<a href="/birds/species/${bird.bird_id}" class="text-white font-weight-bold" style="font-size: 1.05rem;">${bird.common_name}</a>`
-                : `<span class="text-white font-weight-bold" style="font-size: 1.05rem;">${bird.common_name}</span>`;
-
-            let actionCol;
+            let actionHtml = '';
             if (bird.on_life_list) {
                 const dateText = bird.date_sighted ? ` (${bird.date_sighted})` : '';
-                actionCol = `<span class="badge badge-success px-2 py-1"><i class="fas fa-check mr-1"></i>✓ On Life List${dateText}</span>`;
+                actionHtml = `<span class="badge badge-success py-2 px-3">✓ Sighted${dateText}</span>`;
             } else {
-                actionCol = `
-                    <button class="btn btn-success btn-sm btn-add-sighting"
+                actionHtml = `
+                    <button class="btn btn-outline-success btn-sm btn-add-modal"
                             data-bird-id="${bird.bird_id || ''}"
-                            data-sci-name="${bird.scientific_name}"
-                            data-common-name="${bird.common_name}">
+                            data-sci-name="${escapeHtml(bird.scientific_name)}"
+                            data-common-name="${escapeHtml(bird.common_name)}">
                         + Add Sighting
                     </button>
                 `;
             }
 
             html += `
-                <tr id="row-bird-${bird.scientific_name.replace(/\s+/g, '-')}">
-                    <td class="align-middle bird-rank">${rank}</td>
-                    <td class="align-middle p-2">${thumbImg}</td>
+                <tr>
+                    <td class="align-middle bird-rank">${idx + 1}</td>
+                    <td class="align-middle">${thumbHtml}</td>
                     <td class="align-middle">
-                        <div>${nameLink}</div>
-                        <div class="text-muted font-italic small"><em>${bird.scientific_name}</em></div>
+                        <div class="font-weight-bold">
+                            ${bird.bird_id ? `<a href="/birds/species/${bird.bird_id}" class="text-white">${bird.common_name}</a>` : `<span class="text-white">${bird.common_name}</span>`}
+                        </div>
+                        <div class="text-muted font-italic small">${bird.scientific_name}</div>
                     </td>
                     <td class="align-middle">
-                        <span class="count-badge">${bird.count.toLocaleString()} observations</span>
+                        <span class="count-badge">${bird.how_many} sightings</span>
+                        <div class="small text-muted mt-1">on ${bird.checklist_count} checklists</div>
                     </td>
-                    <td class="align-middle text-right">${actionCol}</td>
+                    <td class="align-middle text-right">${actionHtml}</td>
                 </tr>
             `;
         });
-
         tableBody.innerHTML = html;
-        attachAddButtons();
-    }
 
-    function attachAddButtons() {
-        document.querySelectorAll('.btn-add-sighting').forEach(btn => {
+        // Attach click listeners to "+ Add Sighting" buttons
+        document.querySelectorAll('.btn-add-modal').forEach(btn => {
             btn.addEventListener('click', function() {
                 const birdId = this.dataset.birdId;
                 const sciName = this.dataset.sciName;
@@ -380,13 +377,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('modal-bird-title').textContent = commonName;
                 document.getElementById('modal-bird-subtitle').textContent = sciName;
                 document.getElementById('modal-notes').value = '';
+                document.getElementById('modal-date-sighted').value = new Date().toISOString().split('T')[0];
 
                 $('#addSightingModal').modal('show');
             });
         });
     }
 
-    // Handle modal form submission
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Modal form submission
     document.getElementById('add-sighting-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const submitBtn = document.getElementById('btn-save-sighting');
@@ -401,13 +405,26 @@ document.addEventListener('DOMContentLoaded', function() {
             notes: document.getElementById('modal-notes').value
         };
 
+        const headers = { 'Content-Type': 'application/json' };
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : null;
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken;
+        }
+
         fetch('/birds/api/add_sighting', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(payload)
         })
-        .then(res => res.json())
+        .then(res => {
+            if (res.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            return res.json();
+        })
         .then(data => {
+            if (!data) return;
             submitBtn.disabled = false;
             submitBtn.textContent = "Save to Life List";
             if (data.success) {

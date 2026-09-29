@@ -1,5 +1,6 @@
 import logging
 import os
+from urllib.parse import urlparse
 
 import valkey
 from flask import Flask, session, request, jsonify, redirect
@@ -58,7 +59,7 @@ def create_flask_app() -> Flask:
     if not admin_password:
         raise RuntimeError("ADMIN_PASSWORD environment variable is required")
 
-    app.config["SECRET_KEY"] = secret_key
+    app.secret_key = secret_key
     app.config["ADMIN_PASSWORD"] = admin_password
 
     cache_url = os.environ.get("REDIS_DATA_URL")
@@ -131,6 +132,13 @@ def create_flask_app() -> Flask:
                 and request.accept_mimetypes.accept_json
                 and not request.accept_mimetypes.accept_html
         ):
+            if request.referrer:
+                ref_url = urlparse(request.referrer)
+                path = ref_url.path
+                if ref_url.query:
+                    path += f"?{ref_url.query}"
+                if path.startswith('/') and not path.startswith('//'):
+                    session['next'] = path
             return jsonify({'error': 'Authentication required'}), 401
 
         # Browser request
