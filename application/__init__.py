@@ -113,20 +113,19 @@ def create_flask_app() -> Flask:
     # Add before_request hook for automatic write protection
     @app.before_request
     def require_auth_for_writes():
-        # Public endpoints that don't require auth
-        public_endpoints = {'login', 'static'}
-        if request.endpoint in public_endpoints:
+        # Login must always be accessible, including its POST request.
+        if request.path == "/login":
             return None
 
-        # Allow read-only requests
+        # Allow read-only requests.
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             return None
 
-        # Authenticated users may perform writes
+        # Authenticated users may perform writes.
         if session.get('authenticated'):
             return None
 
-        # API/fetch request
+        # API/fetch request.
         if request.is_json or (
                 request.accept_mimetypes
                 and request.accept_mimetypes.accept_json
@@ -137,11 +136,13 @@ def create_flask_app() -> Flask:
                 path = ref_url.path
                 if ref_url.query:
                     path += f"?{ref_url.query}"
+
                 if path.startswith('/') and not path.startswith('//'):
                     session['next'] = path
+
             return jsonify({'error': 'Authentication required'}), 401
 
-        # Browser request
+        # Browser request.
         session['next'] = request.full_path.rstrip('?')
         return redirect('/login')
 
