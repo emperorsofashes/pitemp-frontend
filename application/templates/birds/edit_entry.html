@@ -17,6 +17,7 @@
             <p class="card-text"><em>{{ entry.scientific_name }}</em></p>
             
             <form action="/birds/edit_entry/{{ entry.id }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <label for="date_sighted">Date Sighted:</label>
                     <input type="text" name="date_sighted" id="date_sighted" class="form-control" 

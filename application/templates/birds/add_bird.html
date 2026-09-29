@@ -80,6 +80,7 @@
             <div class="card-body">
                 <h5 class="card-title">Add <span id="form_bird_name"></span> to Life List</h5>
                 <form id="addSightingForm">
+                    <input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="bird_id" id="bird_id">
                     <input type="hidden" name="scientific_name" id="scientific_name">
                     <input type="hidden" name="common_name" id="common_name">
@@ -143,9 +144,15 @@ document.getElementById('addSightingForm').addEventListener('submit', function(e
         notes: document.getElementById('notes').value
     };
 
+    const headers = {'Content-Type': 'application/json'};
+    const csrfToken = document.getElementById('csrf_token').value;
+    if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+    }
+
     fetch('/birds/api/add_sighting', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: JSON.stringify(payload)
     })
     .then(res => res.json())

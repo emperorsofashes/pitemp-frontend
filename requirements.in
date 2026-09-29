@@ -7,3 +7,4 @@ fakeredis
 Flask-Compress
 pytz
 requests
+Flask-WTF

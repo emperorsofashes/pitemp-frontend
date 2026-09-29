@@ -2,8 +2,9 @@ import logging
 import os
 
 import valkey
-from flask import Flask
+from flask import Flask, session
 from flask_compress import Compress
+from flask_wtf.csrf import CSRFProtect
 from pymongo import MongoClient
 
 from application.constants.app_constants import (
@@ -26,6 +27,7 @@ logging.getLogger("socketio.server").setLevel(logging.WARNING)
 LOG = logging.getLogger(__name__)
 
 COMPRESS = Compress()
+CSRF = CSRFProtect()
 
 
 def bytes_to_display(value: int) -> str:
@@ -82,11 +84,54 @@ def create_flask_app() -> Flask:
 
     # This must be set in the environment as a secret
     app.secret_key = os.environ["SECRET_KEY"]
+    
+    # Load admin password for authentication
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+    if not admin_password:
+        LOG.warning("ADMIN_PASSWORD not set in environment - write operations will not be protected")
+    app.config["ADMIN_PASSWORD"] = admin_password
+
+    # Configure secure session settings for production (HTTPS)
+    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() == "true"
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    
+    # Initialize CSRF protection
+    CSRF.init_app(app)
 
     # Allow the use of the bytes_to_display method in Jinja
     app.jinja_env.filters["bytes_to_display"] = bytes_to_display
 
     # Register blueprints to add routes to the app
     app.register_blueprint(HTML_BLUEPRINT)
+    
+    # Add before_request hook for automatic write protection
+    @app.before_request
+    def require_auth_for_writes():
+        from flask import request, jsonify, redirect, session
+        
+        # Public endpoints that don't require auth
+        public_endpoints = {'login', 'static'}
+        if request.endpoint in public_endpoints:
+            return None
+            
+        # Allow GET, HEAD, OPTIONS requests (read-only)
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return None
+            
+        # Check if user is authenticated
+        if session.get('authenticated'):
+            return None
+            
+        # Unauthenticated write request
+        # Check if this is an API/fetch request (expects JSON response)
+        if request.is_json or (request.accept_mimetypes and 
+                               request.accept_mimetypes.accept_json and 
+                               not request.accept_mimetypes.accept_html):
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        # Browser request - redirect to login with return URL
+        session['next'] = request.url
+        return redirect('/login')
 
     return app
