@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <title>Books Not Configured</title>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="alert alert-warning">
+        <h4 class="alert-heading">Books Database Not Configured</h4>
+        <p>The books database has not been configured. Please check your application configuration and ensure the MongoDB connection is properly set up.</p>
+    </div>
+</div>
+{% endblock %}

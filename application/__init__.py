@@ -13,10 +13,13 @@ from application.constants.app_constants import (
     DATABASE_CONFIG_KEY,
     BEERS_DATABASE_CONFIG_KEY,
     DISKS_DATABASE_CONFIG_KEY,
-    BIRDS_DATABASE_CONFIG_KEY, SESSION_LIFETIME_DAYS,
+    BIRDS_DATABASE_CONFIG_KEY,
+    BOOKS_DATABASE_CONFIG_KEY,
+    SESSION_LIFETIME_DAYS,
 )
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
+from application.data.book.dao import BookDao
 from application.data.custom_json_encoder import CustomJsonEncoder
 from application.data.disks.dao import DisksDao
 from application.data.temperature.dao import ApplicationDao
@@ -87,17 +90,15 @@ def create_flask_app() -> Flask:
     disks_dao = DisksDao(client=client, cache=cache)
     app.config[DISKS_DATABASE_CONFIG_KEY] = disks_dao
 
-    # Initialize bird DAO with separate credentials
-    bird_username = os.environ.get("MONGO_BIRD_USER")
-    bird_password = os.environ.get("MONGO_BIRD_PASSWORD")
-    if bird_username and bird_password:
-        bird_client = MongoClient(f"mongodb+srv://{bird_username}:{bird_password}@{host}/?retryWrites=true&w=majority")
-        bird_dao = BirdDao(client=bird_client, cache=cache)
-        app.config[BIRDS_DATABASE_CONFIG_KEY] = bird_dao
-        LOG.info("Bird DAO initialized with separate credentials")
-    else:
-        LOG.warning("MONGO_BIRD_USER or MONGO_BIRD_PASSWORD not set, bird functionality will not be available")
-        app.config[BIRDS_DATABASE_CONFIG_KEY] = None
+    # Initialize bird DAO using the main MongoDB credentials
+    bird_dao = BirdDao(client=client, cache=cache)
+    app.config[BIRDS_DATABASE_CONFIG_KEY] = bird_dao
+    LOG.info("Bird DAO initialized using main MongoDB credentials")
+
+    # Initialize books DAO using the main MongoDB credentials
+    books_dao = BookDao(client=client, cache=cache)
+    app.config[BOOKS_DATABASE_CONFIG_KEY] = books_dao
+    LOG.info("Books DAO initialized using main MongoDB credentials")
 
     # Configure secure session settings for production (HTTPS)
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() == "true"

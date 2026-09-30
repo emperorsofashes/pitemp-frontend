@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block header %}
+    <title>Add Book to Collection</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Add Book to Collection</h1>
+
+    <a href="/books" class="btn btn-secondary mb-3">Back to Book Collection</a>
+
+    <div class="card bg-dark text-white">
+        <div class="card-body">
+            <h5 class="card-title">Book Details</h5>
+            <form action="/books/add" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" name="title" id="title" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="authors">Author(s) *</label>
+                    <input type="text" name="authors" id="authors" class="form-control bg-dark text-white border-secondary" 
+                           placeholder="Separate multiple authors with commas" required>
+                    <small class="text-muted">Separate multiple authors with commas (e.g., "Jane Doe, John Smith")</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="date_published">Date Published</label>
+                    <input type="text" name="date_published" id="date_published" class="form-control bg-dark text-white border-secondary"
+                           placeholder="YYYY-MM-DD">
+                </div>
+
+                <div class="form-group">
+                    <label for="isbn">ISBN</label>
+                    <input type="text" name="isbn" id="isbn" class="form-control bg-dark text-white border-secondary"
+                           placeholder="ISBN-10 or ISBN-13">
+                </div>
+
+                <div class="form-group">
+                    <label for="oclc_number">OCLC Number</label>
+                    <input type="text" name="oclc_number" id="oclc_number" class="form-control bg-dark text-white border-secondary"
+                           placeholder="OCLC control number">
+                </div>
+
+                <div class="form-group">
+                    <label for="page_count">Page Count</label>
+                    <input type="number" name="page_count" id="page_count" class="form-control bg-dark text-white border-secondary"
+                           min="0" placeholder="Number of pages">
+                </div>
+
+                <button type="submit" class="btn btn-success">Add Book</button>
+                <a href="/books" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+// Initialize Flatpickr for date picker
+flatpickr("#date_published", {
+    dateFormat: "Y-m-d",
+    allowInput: true
+});
+</script>
+{% endblock %}

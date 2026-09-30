@@ -10,6 +10,7 @@ from application import DISKS_DATABASE_CONFIG_KEY, DisksDao
 from application.constants.app_constants import (
     BEERS_DATABASE_CONFIG_KEY,
     BIRDS_DATABASE_CONFIG_KEY,
+    BOOKS_DATABASE_CONFIG_KEY,
     DATABASE_CONFIG_KEY,
     DATETIME_FORMAT_STRING,
 )
@@ -17,6 +18,7 @@ from application.constants.beer_constants import BEER_STYLES_V1, BEER_STYLES_V2,
 from application.constants.bird_constants import CARTO_API_KEY
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
+from application.data.book.dao import BookDao
 from application.data.temperature.dao import ApplicationDao
 
 LOG = logging.getLogger(__name__)
@@ -529,6 +531,69 @@ def birds_search():
     })
 
 
+@HTML_BLUEPRINT.route("/books")
+def books_index():
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        return render_template("books/not_configured.html")
+
+    books = book_dao.get_all_books()
+    return render_template("books/index.html", books=books)
+
+
+@HTML_BLUEPRINT.route("/books/add", methods=["GET", "POST"])
+def books_add():
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        return render_template("books/not_configured.html")
+
+    if request.method == "POST":
+        title = request.form.get("title")
+        authors_str = request.form.get("authors")
+        date_published_str = request.form.get("date_published")
+        isbn = request.form.get("isbn")
+        oclc_number = request.form.get("oclc_number")
+        page_count_str = request.form.get("page_count")
+
+        # Parse authors (comma-separated)
+        authors = [a.strip() for a in authors_str.split(",") if a.strip()]
+
+        # Parse date published
+        date_published = None
+        if date_published_str:
+            try:
+                date_published = datetime.strptime(date_published_str, "%Y-%m-%d")
+            except ValueError:
+                pass
+
+        # Parse page count
+        page_count = None
+        if page_count_str:
+            try:
+                page_count = int(page_count_str)
+            except ValueError:
+                pass
+
+        book_dao.add_book(
+            title=title,
+            authors=authors,
+            date_published=date_published,
+            isbn=isbn,
+            oclc_number=oclc_number,
+            page_count=page_count,
+        )
+        return redirect("/books")
+
+    # Require login for adding books
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
+    return render_template("books/add_book.html")
+
+
 def _is_safe_redirect_url(url: str) -> bool:
     if not url:
         return False
@@ -615,3 +680,7 @@ def _get_disks_dao() -> DisksDao:
 
 def _get_birds_dao() -> BirdDao | None:
     return current_app.config.get(BIRDS_DATABASE_CONFIG_KEY)
+
+
+def _get_books_dao() -> BookDao | None:
+    return current_app.config.get(BOOKS_DATABASE_CONFIG_KEY)
