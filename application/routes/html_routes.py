@@ -21,6 +21,7 @@ from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.book.dao import BookDao
 from application.data.book.providers import (
+    BookSearchMerger,
     GoogleBooksProvider,
     LibraryOfCongressProvider,
     MetadataMerger,
@@ -670,6 +671,80 @@ def book_lookup():
     except Exception as e:
         LOG.error(f"Error during ISBN lookup: {e}")
         return jsonify({"error": "An error occurred during lookup"}), 500
+
+
+@HTML_BLUEPRINT.route("/api/book-search/")
+def book_search():
+    """API endpoint to search for books by keyword using multiple providers."""
+    query = request.args.get("q", "").strip()
+
+    if not query:
+        return jsonify({"error": "Search query is required"}), 400
+
+    if len(query) < 2:
+        return jsonify({"error": "Search query must be at least 2 characters"}), 400
+
+    try:
+        book_dao = _get_books_dao()
+        
+        # Check cache first
+        if book_dao:
+            cached_result = book_dao.get_cached_book_search(query)
+            if cached_result:
+                return jsonify({
+                    "success": True,
+                    "results": cached_result[0],
+                    "provider_status": cached_result[1],
+                    "cached": True
+                })
+
+        # Initialize search merger with providers
+        merger = BookSearchMerger()
+        merger.add_provider(OpenLibraryProvider(timeout=10))
+        merger.add_provider(GoogleBooksProvider(timeout=10))
+        merger.add_provider(LibraryOfCongressProvider(timeout=10))
+
+        # Search across all providers
+        results, provider_status = merger.search(query, max_results_per_provider=10)
+
+        # Convert SearchResult objects to dicts for JSON response
+        results_dicts = []
+        for result in results:
+            result_dict = {
+                "title": result.title,
+                "authors": result.authors,
+                "publisher": result.publisher,
+                "publication_date": result.publication_date.strftime("%Y-%m-%d") if result.publication_date else None,
+                "publication_year": result.publication_year,
+                "page_count": result.page_count,
+                "isbn_10": result.isbn_10,
+                "isbn_13": result.isbn_13,
+                "description": result.description,
+                "edition": result.edition,
+                "series": result.series,
+                "subjects": result.subjects,
+                "language": result.language,
+                "cover_url": result.cover_url,
+                "provider": result.provider,
+                "provider_record_id": result.provider_record_id,
+                "source_url": result.source_url
+            }
+            results_dicts.append(result_dict)
+
+        # Cache successful result
+        if book_dao and results_dicts:
+            book_dao.cache_book_search(query, results_dicts, provider_status)
+
+        return jsonify({
+            "success": True,
+            "results": results_dicts,
+            "provider_status": provider_status,
+            "cached": False
+        })
+
+    except Exception as e:
+        LOG.error(f"Error during book search: {e}")
+        return jsonify({"error": "An error occurred during search"}), 500
 
 
 def _is_safe_redirect_url(url: str) -> bool:

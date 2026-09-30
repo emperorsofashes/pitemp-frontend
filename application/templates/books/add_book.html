@@ -15,23 +15,50 @@
         <div class="card-body">
             <h5 class="card-title">Book Details</h5>
             
-            <!-- ISBN Lookup Section -->
+            <!-- Search Section -->
             <div class="card bg-secondary text-white mb-4">
                 <div class="card-body">
-                    <h6 class="card-title mb-3">ISBN Lookup</h6>
-                    <div class="form-group mb-2">
-                        <label for="isbn_lookup">ISBN</label>
-                        <div class="input-group">
-                            <input type="text" id="isbn_lookup" class="form-control bg-dark text-white border-secondary"
-                                   placeholder="ISBN-10 or ISBN-13">
-                            <div class="input-group-append">
-                                <button type="button" id="lookup-btn" class="btn btn-info">Look up</button>
-                            </div>
-                        </div>
-                        <small class="text-muted">Enter an ISBN to automatically populate book details from multiple sources</small>
+                    <h6 class="card-title mb-3">Find Book</h6>
+                    
+                    <!-- Search Mode Toggle -->
+                    <div class="btn-group mb-3" role="group">
+                        <button type="button" class="btn btn-info" id="mode-isbn" onclick="setSearchMode('isbn')">ISBN Lookup</button>
+                        <button type="button" class="btn btn-outline-info" id="mode-search" onclick="setSearchMode('search')">Keyword Search</button>
                     </div>
-                    <div id="lookup-status" class="mt-2"></div>
-                    <div id="provider-status"></div>
+                    
+                    <!-- ISBN Lookup Mode -->
+                    <div id="isbn-mode">
+                        <div class="form-group mb-2">
+                            <label for="isbn_lookup">ISBN</label>
+                            <div class="input-group">
+                                <input type="text" id="isbn_lookup" class="form-control bg-dark text-white border-secondary"
+                                       placeholder="ISBN-10 or ISBN-13">
+                                <div class="input-group-append">
+                                    <button type="button" id="lookup-btn" class="btn btn-info">Look up</button>
+                                </div>
+                            </div>
+                            <small class="text-muted">Enter an ISBN to automatically populate book details from multiple sources</small>
+                        </div>
+                        <div id="lookup-status" class="mt-2"></div>
+                        <div id="provider-status"></div>
+                    </div>
+                    
+                    <!-- Keyword Search Mode -->
+                    <div id="search-mode" style="display: none;">
+                        <div class="form-group mb-2">
+                            <label for="search_query">Search</label>
+                            <div class="input-group">
+                                <input type="text" id="search_query" class="form-control bg-dark text-white border-secondary"
+                                       placeholder="Title, author, publisher, or keywords">
+                                <div class="input-group-append">
+                                    <button type="button" id="search-btn" class="btn btn-info">Search</button>
+                                </div>
+                            </div>
+                            <small class="text-muted">Search by title, author, publisher, year, or keywords</small>
+                        </div>
+                        <div id="search-status" class="mt-2"></div>
+                        <div id="search-results"></div>
+                    </div>
                 </div>
             </div>
 
@@ -89,6 +116,29 @@ flatpickr("#date_published", {
     allowInput: true
 });
 
+// Search mode management
+let currentMode = 'isbn';
+
+function setSearchMode(mode) {
+    currentMode = mode;
+    const isbnMode = document.getElementById('isbn-mode');
+    const searchMode = document.getElementById('search-mode');
+    const isbnBtn = document.getElementById('mode-isbn');
+    const searchBtn = document.getElementById('mode-search');
+    
+    if (mode === 'isbn') {
+        isbnMode.style.display = 'block';
+        searchMode.style.display = 'none';
+        isbnBtn.className = 'btn btn-info';
+        searchBtn.className = 'btn btn-outline-info';
+    } else {
+        isbnMode.style.display = 'none';
+        searchMode.style.display = 'block';
+        isbnBtn.className = 'btn btn-outline-info';
+        searchBtn.className = 'btn btn-info';
+    }
+}
+
 // ISBN Lookup functionality
 const lookupBtn = document.getElementById('lookup-btn');
 const isbnLookupInput = document.getElementById('isbn_lookup');
@@ -100,7 +150,7 @@ lookupBtn.addEventListener('click', function() {
     
     const isbn = isbnLookupInput.value.trim();
     if (!isbn) {
-        showStatus('Please enter an ISBN', 'error');
+        showLookupStatus('Please enter an ISBN', 'error');
         return;
     }
     
@@ -118,7 +168,7 @@ function performLookup(isbn) {
     isLookingUp = true;
     lookupBtn.disabled = true;
     lookupBtn.textContent = 'Looking up...';
-    showStatus('Looking up book metadata...', 'loading');
+    showLookupStatus('Looking up book metadata...', 'loading');
     
     const url = `/api/book-lookup/?isbn=${encodeURIComponent(isbn)}`;
     
@@ -134,19 +184,180 @@ function performLookup(isbn) {
         .then(data => {
             if (data.success) {
                 populateForm(data);
-                showStatus('Book details populated successfully!', 'success');
+                showLookupStatus('Book details populated successfully!', 'success');
             } else {
                 throw new Error(data.error || 'Unknown error');
             }
         })
         .catch(error => {
-            showStatus(error.message, 'error');
+            showLookupStatus(error.message, 'error');
         })
         .finally(() => {
             isLookingUp = false;
             lookupBtn.disabled = false;
             lookupBtn.textContent = 'Look up';
         });
+}
+
+function showLookupStatus(message, type) {
+    lookupStatus.innerHTML = '';
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert';
+    
+    if (type === 'loading') {
+        alertDiv.className += ' alert-info';
+        alertDiv.innerHTML = `<strong>Loading...</strong> ${message}`;
+    } else if (type === 'success') {
+        alertDiv.className += ' alert-success';
+        alertDiv.innerHTML = `<strong>Success!</strong> ${message}`;
+    } else if (type === 'error') {
+        alertDiv.className += ' alert-danger';
+        alertDiv.innerHTML = `<strong>Error:</strong> ${message}`;
+    }
+    
+    lookupStatus.appendChild(alertDiv);
+    
+    // Auto-hide success messages after 5 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            if (lookupStatus.contains(alertDiv)) {
+                lookupStatus.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+}
+
+// Keyword Search functionality
+const searchBtn = document.getElementById('search-btn');
+const searchInput = document.getElementById('search_query');
+const searchStatus = document.getElementById('search-status');
+const searchResultsDiv = document.getElementById('search-results');
+let isSearching = false;
+
+searchBtn.addEventListener('click', function() {
+    if (isSearching) return;
+    
+    const query = searchInput.value.trim();
+    if (!query) {
+        showSearchStatus('Please enter a search query', 'error');
+        return;
+    }
+    
+    if (query.length < 2) {
+        showSearchStatus('Search query must be at least 2 characters', 'error');
+        return;
+    }
+    
+    performSearch(query);
+});
+
+searchInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        searchBtn.click();
+    }
+});
+
+function performSearch(query) {
+    isSearching = true;
+    searchBtn.disabled = true;
+    searchBtn.textContent = 'Searching...';
+    showSearchStatus('Searching for books...', 'loading');
+    searchResultsDiv.innerHTML = '';
+    
+    const url = `/api/book-search/?q=${encodeURIComponent(query)}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Search failed');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                displaySearchResults(data.results, data.provider_status);
+                showSearchStatus(`Found ${data.results.length} book(s)`, 'success');
+            } else {
+                throw new Error(data.error || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            showSearchStatus(error.message, 'error');
+        })
+        .finally(() => {
+            isSearching = false;
+            searchBtn.disabled = false;
+            searchBtn.textContent = 'Search';
+        });
+}
+
+function displaySearchResults(results, providerStatus) {
+    if (!results || results.length === 0) {
+        searchResultsDiv.innerHTML = '<div class="alert alert-warning mt-2">No books found. Try a different search query.</div>';
+        return;
+    }
+    
+    let html = '<div class="card bg-dark text-white mt-2"><div class="card-body"><h6 class="card-title mb-3">Search Results</h6>';
+    
+    // Show provider status
+    html += '<div class="mb-3 small">';
+    for (const [provider, status] of Object.entries(providerStatus)) {
+        let icon = status === 'success' ? '✓' : (status === 'no_match' ? '—' : '✗');
+        let textClass = status === 'success' ? 'text-success' : (status === 'no_match' ? 'text-muted' : 'text-danger');
+        html += `<span class="${textClass} mr-3">${icon} ${provider}</span>`;
+    }
+    html += '</div>';
+    
+    html += '<div class="list-group">';
+    
+    for (const result of results) {
+        const isbn = result.isbn_13 || result.isbn_10;
+        const authors = result.authors && result.authors.length > 0 ? result.authors.join(', ') : 'Unknown';
+        const year = result.publication_year || result.publication_date ? result.publication_year : '';
+        
+        html += `
+            <button type="button" class="list-group-item list-group-item-action bg-secondary text-white" onclick="selectSearchResult(${JSON.stringify(result).replace(/"/g, '&quot;')})">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${escapeHtml(result.title)}</h6>
+                    <small class="text-muted">${result.provider}</small>
+                </div>
+                <p class="mb-1 small">${escapeHtml(authors)}</p>
+                <small class="text-muted">${year ? year + ' • ' : ''}${result.publisher ? escapeHtml(result.publisher) : ''}${isbn ? ' • ISBN: ' + isbn : ''}</small>
+            </button>
+        `;
+    }
+    
+    html += '</div></div></div>';
+    searchResultsDiv.innerHTML = html;
+}
+
+function selectSearchResult(result) {
+    const metadata = {
+        title: result.title,
+        authors: result.authors,
+        date_published: result.publication_date,
+        page_count: result.page_count,
+        isbn: result.isbn_13 || result.isbn_10
+    };
+    
+    populateForm(metadata);
+    
+    // Switch to ISBN mode to show the populated form
+    setSearchMode('isbn');
+    
+    // Show success message
+    showLookupStatus('Book details populated from ' + result.provider + '. Please review before saving.', 'success');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function populateForm(data) {
@@ -228,8 +439,8 @@ function displayProviderStatus(providerStatus, sourceProviders) {
     statusDiv.innerHTML = html;
 }
 
-function showStatus(message, type) {
-    lookupStatus.innerHTML = '';
+function showSearchStatus(message, type) {
+    searchStatus.innerHTML = '';
     
     const alertDiv = document.createElement('div');
     alertDiv.className = 'alert';
@@ -245,13 +456,13 @@ function showStatus(message, type) {
         alertDiv.innerHTML = `<strong>Error:</strong> ${message}`;
     }
     
-    lookupStatus.appendChild(alertDiv);
+    searchStatus.appendChild(alertDiv);
     
     // Auto-hide success messages after 5 seconds
     if (type === 'success') {
         setTimeout(() => {
-            if (lookupStatus.contains(alertDiv)) {
-                lookupStatus.removeChild(alertDiv);
+            if (searchStatus.contains(alertDiv)) {
+                searchStatus.removeChild(alertDiv);
             }
         }, 5000);
     }

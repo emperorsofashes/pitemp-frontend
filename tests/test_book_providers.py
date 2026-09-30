@@ -2,11 +2,12 @@ import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-from application.data.book.providers.base import BookMetadata
+from application.data.book.providers.base import BookMetadata, BookMetadataProvider, SearchResult
 from application.data.book.providers.googlebooks import GoogleBooksProvider
 from application.data.book.providers.loc import LibraryOfCongressProvider
 from application.data.book.providers.merger import MetadataMerger
 from application.data.book.providers.openlibrary import OpenLibraryProvider
+from application.data.book.providers.search_merger import BookSearchMerger
 
 
 class TestOpenLibraryProvider:
@@ -61,6 +62,53 @@ class TestOpenLibraryProvider:
             
             assert metadata is None
 
+    def test_search_returns_results(self):
+        """Test Open Library search returns results."""
+        provider = OpenLibraryProvider()
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "docs": [
+                {
+                    "title": "Test Book",
+                    "author_name": ["Test Author"],
+                    "publisher": ["Test Publisher"],
+                    "first_publish_year": 2020,
+                    "number_of_pages": 300,
+                    "isbn": ["1234567890"],
+                    "cover_i": 12345,
+                    "key": "/works/OL123W"
+                }
+            ]
+        }
+        
+        with patch('requests.get', return_value=mock_response):
+            results = provider.search("test book")
+            
+            assert len(results) == 1
+            assert results[0].title == "Test Book"
+            assert results[0].authors == ["Test Author"]
+            assert results[0].publisher == "Test Publisher"
+            assert results[0].publication_year == 2020
+            assert results[0].page_count == 300
+            assert results[0].isbn_10 == "1234567890"
+            assert results[0].cover_url == "https://covers.openlibrary.org/b/id/12345-L.jpg"
+            assert results[0].provider == "Open Library"
+
+    def test_search_no_results(self):
+        """Test Open Library search returns no results."""
+        provider = OpenLibraryProvider()
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"docs": []}
+        
+        with patch('requests.get', return_value=mock_response):
+            results = provider.search("nonexistent book")
+            
+            assert len(results) == 0
+
 
 class TestGoogleBooksProvider:
     """Test Google Books provider."""
@@ -108,6 +156,40 @@ class TestGoogleBooksProvider:
             metadata = provider.lookup("9999999999")
             
             assert metadata is None
+
+    def test_search_returns_results(self):
+        """Test Google Books search returns results."""
+        provider = GoogleBooksProvider()
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "items": [{
+                "volumeInfo": {
+                    "title": "Search Result Book",
+                    "authors": ["Author One"],
+                    "publishedDate": "2020",
+                    "pageCount": 250,
+                    "publisher": "Publisher Inc",
+                    "description": "A description",
+                    "imageLinks": {"thumbnail": "http://example.com/cover.jpg"},
+                    "industryIdentifiers": [{"type": "ISBN_13", "identifier": "9781234567890"}],
+                    "infoLink": "https://books.google.com/books?id=test"
+                },
+                "id": "test_id"
+            }]
+        }
+        
+        with patch('requests.get', return_value=mock_response):
+            results = provider.search("search query")
+            
+            assert len(results) == 1
+            assert results[0].title == "Search Result Book"
+            assert results[0].authors == ["Author One"]
+            assert results[0].publication_year == 2020
+            assert results[0].page_count == 250
+            assert results[0].isbn_13 == "9781234567890"
+            assert results[0].provider == "Google Books"
 
 
 class TestLibraryOfCongressProvider:

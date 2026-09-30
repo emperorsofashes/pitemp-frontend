@@ -1,10 +1,11 @@
 import logging
 import re
 from datetime import datetime
+from urllib.parse import quote
 
 import requests
 
-from application.data.book.providers.base import BookMetadata, BookMetadataProvider
+from application.data.book.providers.base import BookMetadata, BookMetadataProvider, SearchResult
 
 LOG = logging.getLogger(__name__)
 
@@ -92,3 +93,76 @@ class OpenLibraryProvider(BookMetadataProvider):
         except Exception as e:
             LOG.error(f"Error during Open Library lookup: {e}")
             return None
+
+    def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """Search for books by keyword using Open Library Search API."""
+        try:
+            # Use Open Library Search API
+            url = f"https://openlibrary.org/search.json?q={quote(query)}&limit={max_results}&fields=title,author_name,publisher,first_publish_year,number_of_pages,isbn,cover_i,key"
+            resp = requests.get(url, timeout=self.timeout, headers={"User-Agent": "BookCatalog/1.0"})
+
+            if resp.status_code != 200:
+                LOG.warning(f"Open Library Search API returned status {resp.status_code}")
+                return []
+
+            data = resp.json()
+            results = []
+
+            if "docs" not in data:
+                return []
+
+            for doc in data["docs"][:max_results]:
+                # Extract ISBNs
+                isbn_10 = None
+                isbn_13 = None
+                if "isbn" in doc and doc["isbn"]:
+                    for isbn in doc["isbn"]:
+                        if len(isbn) == 10:
+                            isbn_10 = isbn
+                        elif len(isbn) == 13:
+                            isbn_13 = isbn
+
+                # Extract publication date
+                publication_date = None
+                publication_year = None
+                if "first_publish_year" in doc:
+                    publication_year = doc["first_publish_year"]
+                    try:
+                        publication_date = datetime(publication_year, 1, 1)
+                    except (ValueError, TypeError):
+                        pass
+
+                # Build cover URL
+                cover_url = None
+                if "cover_i" in doc:
+                    cover_url = f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-L.jpg"
+
+                # Build source URL
+                source_url = None
+                if "key" in doc:
+                    source_url = f"https://openlibrary.org{doc['key']}"
+
+                result = SearchResult(
+                    title=doc.get("title", ""),
+                    authors=doc.get("author_name", []),
+                    publisher=doc.get("publisher", [None])[0] if doc.get("publisher") else None,
+                    publication_date=publication_date,
+                    publication_year=publication_year,
+                    page_count=doc.get("number_of_pages"),
+                    isbn_10=isbn_10,
+                    isbn_13=isbn_13,
+                    cover_url=cover_url,
+                    provider=self.name,
+                    provider_record_id=doc.get("key", ""),
+                    source_url=source_url
+                )
+                results.append(result)
+
+            return results
+
+        except requests.Timeout:
+            LOG.warning("Open Library Search API request timed out")
+            return []
+        except Exception as e:
+            LOG.error(f"Error during Open Library search: {e}")
+            return []

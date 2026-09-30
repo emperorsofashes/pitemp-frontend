@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -55,6 +55,46 @@ class BookMetadata:
             self.source_providers["cover_url"] = provider_name
 
 
+@dataclass(kw_only=True)
+class SearchResult:
+    """Normalized search result from providers."""
+    title: str
+    authors: list[str] = field(default_factory=list)
+    publisher: str | None = None
+    publication_date: datetime | None = None
+    publication_year: int | None = None
+    page_count: int | None = None
+    isbn_10: str | None = None
+    isbn_13: str | None = None
+    description: str | None = None
+    edition: str | None = None
+    series: str | None = None
+    subjects: list[str] = field(default_factory=list)
+    language: str | None = None
+    cover_url: str | None = None
+    provider: str = ""  # Name of the provider
+    provider_record_id: str = ""  # Provider's internal ID for this record
+    source_url: str | None = None  # URL to view the record on the provider's site
+
+    def get_isbn(self) -> str | None:
+        """Return ISBN-13 if available, otherwise ISBN-10."""
+        return self.isbn_13 or self.isbn_10
+
+    def to_book_metadata(self) -> BookMetadata:
+        """Convert to BookMetadata for form population."""
+        return BookMetadata(
+            title=self.title,
+            authors=self.authors,
+            date_published=self.publication_date,
+            isbn=self.get_isbn(),
+            page_count=self.page_count,
+            publisher=self.publisher,
+            description=self.description,
+            cover_url=self.cover_url,
+            source_providers={self.provider: "primary"}
+        )
+
+
 class BookMetadataProvider:
     """Base class for book metadata providers."""
 
@@ -73,6 +113,19 @@ class BookMetadataProvider:
             BookMetadata object if found, None otherwise
         """
         raise NotImplementedError("Subclasses must implement lookup method")
+
+    def search(self, query: str, max_results: int = 10) -> list[SearchResult]:
+        """
+        Search for books by keyword query.
+        
+        Args:
+            query: Search query string
+            max_results: Maximum number of results to return
+            
+        Returns:
+            List of SearchResult objects
+        """
+        raise NotImplementedError("Subclasses must implement search method")
 
     def _normalize_isbn(self, isbn: str) -> str:
         """Remove hyphens and spaces from ISBN."""

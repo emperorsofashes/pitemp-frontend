@@ -13,6 +13,7 @@ from application.data.book.book import Book
 
 LOG = logging.getLogger(__name__)
 ISBN_LOOKUP_CACHE_TTL = timedelta(days=30)  # Cache ISBN lookups for 30 days
+BOOK_SEARCH_CACHE_TTL = timedelta(days=7)  # Cache book searches for 7 days
 
 
 class BookDao:
@@ -164,4 +165,29 @@ class BookDao:
             return pickle.loads(cached) if cached else None
         except Exception as e:
             LOG.warning(f"Failed to retrieve cached ISBN lookup for {isbn}: {e}")
+            return None
+
+    def cache_book_search(self, query: str, results: list, provider_status: dict) -> None:
+        """Cache book search result."""
+        cache_key = f"book_search_{query.lower().strip()}"
+        try:
+            cache_data = {
+                "results": results,
+                "provider_status": provider_status
+            }
+            self.cache.set(cache_key, pickle.dumps(cache_data), ex=BOOK_SEARCH_CACHE_TTL)
+        except Exception as e:
+            LOG.warning(f"Failed to cache book search for '{query}': {e}")
+
+    def get_cached_book_search(self, query: str) -> tuple[list, dict] | None:
+        """Get cached book search result."""
+        cache_key = f"book_search_{query.lower().strip()}"
+        try:
+            cached = self.cache.get(cache_key)
+            if cached:
+                cache_data = pickle.loads(cached)
+                return cache_data.get("results", []), cache_data.get("provider_status", {})
+            return None
+        except Exception as e:
+            LOG.warning(f"Failed to retrieve cached book search for '{query}': {e}")
             return None
