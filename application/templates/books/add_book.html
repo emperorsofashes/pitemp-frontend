@@ -14,6 +14,27 @@
     <div class="card bg-dark text-white">
         <div class="card-body">
             <h5 class="card-title">Book Details</h5>
+            
+            <!-- ISBN Lookup Section -->
+            <div class="card bg-secondary text-white mb-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">ISBN Lookup</h6>
+                    <div class="form-group mb-2">
+                        <label for="isbn_lookup">ISBN</label>
+                        <div class="input-group">
+                            <input type="text" id="isbn_lookup" class="form-control bg-dark text-white border-secondary"
+                                   placeholder="ISBN-10 or ISBN-13">
+                            <div class="input-group-append">
+                                <button type="button" id="lookup-btn" class="btn btn-info">Look up</button>
+                            </div>
+                        </div>
+                        <small class="text-muted">Enter an ISBN to automatically populate book details from multiple sources</small>
+                    </div>
+                    <div id="lookup-status" class="mt-2"></div>
+                    <div id="provider-status"></div>
+                </div>
+            </div>
+
             <form action="/books/add" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
@@ -67,5 +88,173 @@ flatpickr("#date_published", {
     dateFormat: "Y-m-d",
     allowInput: true
 });
+
+// ISBN Lookup functionality
+const lookupBtn = document.getElementById('lookup-btn');
+const isbnLookupInput = document.getElementById('isbn_lookup');
+const lookupStatus = document.getElementById('lookup-status');
+let isLookingUp = false;
+
+lookupBtn.addEventListener('click', function() {
+    if (isLookingUp) return;
+    
+    const isbn = isbnLookupInput.value.trim();
+    if (!isbn) {
+        showStatus('Please enter an ISBN', 'error');
+        return;
+    }
+    
+    performLookup(isbn);
+});
+
+isbnLookupInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        lookupBtn.click();
+    }
+});
+
+function performLookup(isbn) {
+    isLookingUp = true;
+    lookupBtn.disabled = true;
+    lookupBtn.textContent = 'Looking up...';
+    showStatus('Looking up book metadata...', 'loading');
+    
+    const url = `/api/book-lookup/?isbn=${encodeURIComponent(isbn)}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Lookup failed');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                populateForm(data);
+                showStatus('Book details populated successfully!', 'success');
+            } else {
+                throw new Error(data.error || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            showStatus(error.message, 'error');
+        })
+        .finally(() => {
+            isLookingUp = false;
+            lookupBtn.disabled = false;
+            lookupBtn.textContent = 'Look up';
+        });
+}
+
+function populateForm(data) {
+    // Populate title
+    if (data.title) {
+        document.getElementById('title').value = data.title;
+    }
+    
+    // Populate authors
+    if (data.authors && data.authors.length > 0) {
+        document.getElementById('authors').value = data.authors.join(', ');
+    }
+    
+    // Populate date published
+    if (data.date_published) {
+        document.getElementById('date_published').value = data.date_published;
+    }
+    
+    // Populate page count
+    if (data.page_count) {
+        document.getElementById('page_count').value = data.page_count;
+    }
+    
+    // Populate ISBN field in the form
+    if (data.isbn) {
+        document.getElementById('isbn').value = data.isbn;
+    }
+
+    // Display provider status
+    if (data.provider_status) {
+        displayProviderStatus(data.provider_status, data.source_providers);
+    }
+}
+
+function displayProviderStatus(providerStatus, sourceProviders) {
+    const statusDiv = document.getElementById('provider-status');
+    if (!statusDiv) return;
+
+    let html = '<div class="card bg-dark text-white mt-2"><div class="card-body"><h6 class="card-title mb-2">Data Sources</h6><ul class="list-unstyled mb-0 small">';
+    
+    for (const [provider, status] of Object.entries(providerStatus)) {
+        let icon = '';
+        let textClass = '';
+        
+        if (status === 'success') {
+            icon = '✓';
+            textClass = 'text-success';
+        } else if (status === 'no_match') {
+            icon = '—';
+            textClass = 'text-muted';
+        } else {
+            icon = '✗';
+            textClass = 'text-danger';
+        }
+        
+        html += `<li class="${textClass}">${icon} ${provider}</li>`;
+    }
+    
+    html += '</ul>';
+    
+    // Show which fields came from which providers
+    if (sourceProviders && Object.keys(sourceProviders).length > 0) {
+        html += '<div class="mt-2 pt-2 border-top border-secondary"><small class="text-muted">Fields populated by:';
+        const fieldSources = {};
+        for (const [field, provider] of Object.entries(sourceProviders)) {
+            if (!fieldSources[provider]) {
+                fieldSources[provider] = [];
+            }
+            fieldSources[provider].push(field);
+        }
+        
+        for (const [provider, fields] of Object.entries(fieldSources)) {
+            html += `<br><strong>${provider}:</strong> ${fields.join(', ')}`;
+        }
+        html += '</small></div>';
+    }
+    
+    html += '</div></div>';
+    statusDiv.innerHTML = html;
+}
+
+function showStatus(message, type) {
+    lookupStatus.innerHTML = '';
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert';
+    
+    if (type === 'loading') {
+        alertDiv.className += ' alert-info';
+        alertDiv.innerHTML = `<strong>Loading...</strong> ${message}`;
+    } else if (type === 'success') {
+        alertDiv.className += ' alert-success';
+        alertDiv.innerHTML = `<strong>Success!</strong> ${message}`;
+    } else if (type === 'error') {
+        alertDiv.className += ' alert-danger';
+        alertDiv.innerHTML = `<strong>Error:</strong> ${message}`;
+    }
+    
+    lookupStatus.appendChild(alertDiv);
+    
+    // Auto-hide success messages after 5 seconds
+    if (type === 'success') {
+        setTimeout(() => {
+            if (lookupStatus.contains(alertDiv)) {
+                lookupStatus.removeChild(alertDiv);
+            }
+        }, 5000);
+    }
+}
 </script>
 {% endblock %}

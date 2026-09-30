@@ -45,6 +45,8 @@ markupsafe==3.0.3
     #   werkzeug
 pymongo==4.18.1
     # via -r requirements.in
+python-dotenv==1.0.1
+    # via -r requirements.in
 pytz==2026.3.post1
     # via -r requirements.in
 redis==8.1.0

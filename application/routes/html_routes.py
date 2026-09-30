@@ -1,4 +1,5 @@
 import logging
+import re
 import secrets
 from datetime import datetime
 from urllib.parse import urlparse
@@ -19,6 +20,12 @@ from application.constants.bird_constants import CARTO_API_KEY
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.book.dao import BookDao
+from application.data.book.providers import (
+    GoogleBooksProvider,
+    LibraryOfCongressProvider,
+    MetadataMerger,
+    OpenLibraryProvider,
+)
 from application.data.temperature.dao import ApplicationDao
 
 LOG = logging.getLogger(__name__)
@@ -592,6 +599,77 @@ def books_add():
         ))
 
     return render_template("books/add_book.html")
+
+
+@HTML_BLUEPRINT.route("/api/book-lookup/")
+def book_lookup():
+    """API endpoint to lookup book metadata by ISBN using multiple providers."""
+    isbn = request.args.get("isbn", "").strip()
+
+    if not isbn:
+        return jsonify({"error": "ISBN is required"}), 400
+
+    # Clean ISBN - remove hyphens and spaces
+    isbn_clean = isbn.replace("-", "").replace(" ", "")
+
+    if not isbn_clean:
+        return jsonify({"error": "Invalid ISBN"}), 400
+
+    try:
+        book_dao = _get_books_dao()
+        
+        # Check cache first
+        if book_dao:
+            cached_result = book_dao.get_cached_isbn_lookup(isbn_clean)
+            if cached_result:
+                return jsonify(cached_result)
+
+        # Initialize merger with providers in order of preference
+        merger = MetadataMerger()
+        merger.add_provider(OpenLibraryProvider(timeout=10))
+        merger.add_provider(GoogleBooksProvider(timeout=10))
+        merger.add_provider(LibraryOfCongressProvider(timeout=10))
+
+        # Query all providers and merge results
+        metadata, provider_status = merger.lookup(isbn_clean)
+
+        # Check if any provider found data
+        if not metadata.title and not metadata.authors:
+            result = {
+                "error": "No matching book found for this ISBN",
+                "provider_status": provider_status,
+            }
+            # Do not cache negative results - allow re-querying later
+            return jsonify(result), 404
+
+        # Format date for response
+        date_published_str = None
+        if metadata.date_published:
+            date_published_str = metadata.date_published.strftime("%Y-%m-%d")
+
+        result = {
+            "success": True,
+            "title": metadata.title,
+            "authors": metadata.authors or [],
+            "date_published": date_published_str,
+            "page_count": metadata.page_count,
+            "isbn": metadata.isbn or isbn_clean,
+            "publisher": metadata.publisher,
+            "description": metadata.description,
+            "cover_url": metadata.cover_url,
+            "source_providers": metadata.source_providers,
+            "provider_status": provider_status,
+        }
+
+        # Cache successful result
+        if book_dao:
+            book_dao.cache_isbn_lookup(isbn_clean, result)
+
+        return jsonify(result)
+
+    except Exception as e:
+        LOG.error(f"Error during ISBN lookup: {e}")
+        return jsonify({"error": "An error occurred during lookup"}), 500
 
 
 def _is_safe_redirect_url(url: str) -> bool:

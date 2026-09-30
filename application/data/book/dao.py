@@ -1,6 +1,6 @@
 import logging
 import pickle
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 import fakeredis
@@ -12,6 +12,7 @@ from application.constants.book_constants import BOOKS_CACHE_TTL, BOOKS_COLLECTI
 from application.data.book.book import Book
 
 LOG = logging.getLogger(__name__)
+ISBN_LOOKUP_CACHE_TTL = timedelta(days=30)  # Cache ISBN lookups for 30 days
 
 
 class BookDao:
@@ -146,3 +147,21 @@ class BookDao:
     def get_num_total_books(self) -> int:
         """Get total count of books."""
         return self.books_collection.count_documents({})
+
+    def cache_isbn_lookup(self, isbn: str, metadata: dict) -> None:
+        """Cache ISBN lookup result."""
+        cache_key = f"isbn_lookup_{isbn}"
+        try:
+            self.cache.set(cache_key, pickle.dumps(metadata), ex=ISBN_LOOKUP_CACHE_TTL)
+        except Exception as e:
+            LOG.warning(f"Failed to cache ISBN lookup for {isbn}: {e}")
+
+    def get_cached_isbn_lookup(self, isbn: str) -> dict | None:
+        """Get cached ISBN lookup result."""
+        cache_key = f"isbn_lookup_{isbn}"
+        try:
+            cached = self.cache.get(cache_key)
+            return pickle.loads(cached) if cached else None
+        except Exception as e:
+            LOG.warning(f"Failed to retrieve cached ISBN lookup for {isbn}: {e}")
+            return None
