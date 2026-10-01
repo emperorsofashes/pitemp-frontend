@@ -6,6 +6,11 @@ from urllib.parse import urlparse
 
 import valkey
 from dotenv import load_dotenv
+
+# Load .env file if it exists (optional, provides defaults)
+# Environment variables already set take precedence over .env values
+load_dotenv(Path(__file__).parent.parent / "secrets.env", override=False)
+
 from flask import Flask, session, request, jsonify, redirect
 from flask_compress import Compress
 from flask_wtf.csrf import CSRFProtect
@@ -46,10 +51,6 @@ def bytes_to_display(value: int) -> str:
 
 
 def create_flask_app() -> Flask:
-    # Load .env file if it exists (optional, provides defaults)
-    # Environment variables already set take precedence over .env values
-    load_dotenv(Path(__file__).parent.parent / "secrets.env", override=False)
-
     # Create the flask app
     app = Flask(__name__)
 
@@ -91,7 +92,7 @@ def create_flask_app() -> Flask:
         password=password,
         retryWrites=True,
         w="majority",
-     )
+    )
 
     dao = ApplicationDao(client=client, cache=cache)
     app.config[DATABASE_CONFIG_KEY] = dao
