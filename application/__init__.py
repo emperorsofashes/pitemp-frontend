@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # Environment variables already set take precedence over .env values
 load_dotenv(Path(__file__).parent.parent / "secrets.env", override=False)
 
-from flask import Flask, session, request, jsonify, redirect
+from flask import Flask, session, request, jsonify, redirect, flash
 from flask_compress import Compress
 from flask_wtf.csrf import CSRFProtect
 from pymongo import MongoClient
@@ -22,6 +22,8 @@ from application.constants.app_constants import (
     DISKS_DATABASE_CONFIG_KEY,
     BIRDS_DATABASE_CONFIG_KEY,
     BOOKS_DATABASE_CONFIG_KEY,
+    R2_STORAGE_CONFIG_KEY,
+    MAX_COVER_IMAGE_SIZE_BYTES,
     SESSION_LIFETIME_DAYS,
 )
 from application.data.beer.dao import BeerDao
@@ -29,6 +31,7 @@ from application.data.bird.dao import BirdDao
 from application.data.book.dao import BookDao
 from application.data.custom_json_encoder import CustomJsonEncoder
 from application.data.disks.dao import DisksDao
+from application.data.storage.r2_storage import R2Storage, derive_thumb_key
 from application.data.temperature.dao import ApplicationDao
 from application.routes.html_routes import HTML_BLUEPRINT
 
@@ -113,6 +116,28 @@ def create_flask_app() -> Flask:
     app.config[BOOKS_DATABASE_CONFIG_KEY] = books_dao
     LOG.info("Books DAO initialized using main MongoDB credentials")
 
+    # Initialize Cloudflare R2 storage
+    app.config["MAX_CONTENT_LENGTH"] = MAX_COVER_IMAGE_SIZE_BYTES
+    r2_account_id = os.environ.get("R2_ACCOUNT_ID")
+    r2_access_key_id = os.environ.get("R2_ACCESS_KEY_ID")
+    r2_secret_access_key = os.environ.get("R2_SECRET_ACCESS_KEY")
+    r2_bucket_name = os.environ.get("R2_BUCKET_NAME")
+    r2_public_url = os.environ.get("BOOK_IMAGE_HOST") or os.environ.get("R2_PUBLIC_URL")
+
+    if r2_account_id and r2_access_key_id and r2_secret_access_key and r2_bucket_name:
+        r2_storage = R2Storage(
+            account_id=r2_account_id,
+            access_key_id=r2_access_key_id,
+            secret_access_key=r2_secret_access_key,
+            bucket_name=r2_bucket_name,
+            public_url=r2_public_url,
+        )
+        app.config[R2_STORAGE_CONFIG_KEY] = r2_storage
+        LOG.info("Cloudflare R2 storage initialized successfully")
+    else:
+        app.config[R2_STORAGE_CONFIG_KEY] = None
+        LOG.info("Cloudflare R2 storage credentials not set in environment")
+
     # Configure secure session settings for production (HTTPS)
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "true").lower() == "true"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -123,6 +148,44 @@ def create_flask_app() -> Flask:
 
     # Allow the use of the bytes_to_display method in Jinja
     app.jinja_env.filters["bytes_to_display"] = bytes_to_display
+
+    # Add Jinja filters for cover and thumbnail URLs
+    def cover_url_filter(cover_key: str | None) -> str:
+        if not cover_key:
+            return ""
+        storage: R2Storage | None = app.config.get(R2_STORAGE_CONFIG_KEY)
+        if storage and storage.public_url:
+            return storage.get_public_url(cover_key)
+        r2_url = os.environ.get("BOOK_IMAGE_HOST") or os.environ.get("R2_PUBLIC_URL", "")
+        return f"{r2_url.rstrip('/')}/{cover_key.lstrip('/')}" if r2_url else ""
+
+    def thumb_url_filter(cover_key: str | None) -> str:
+        if not cover_key:
+            return ""
+        thumb_key = derive_thumb_key(cover_key)
+        return cover_url_filter(thumb_key)
+
+    app.jinja_env.filters["cover_url"] = cover_url_filter
+    app.jinja_env.filters["thumb_url"] = thumb_url_filter
+
+    # Handle file upload exceeding MAX_CONTENT_LENGTH
+    @app.errorhandler(413)
+    def request_entity_too_large(error):
+        if request.is_json or (
+            request.accept_mimetypes
+            and request.accept_mimetypes.accept_json
+            and not request.accept_mimetypes.accept_html
+        ):
+            return jsonify({"error": "Uploaded file exceeds the 10 MB limit."}), 413
+        flash("The uploaded file exceeds the 10 MB limit.", "danger")
+        if request.referrer:
+            ref_url = urlparse(request.referrer)
+            if not ref_url.netloc or ref_url.netloc == request.host:
+                path = ref_url.path
+                if ref_url.query:
+                    path += f"?{ref_url.query}"
+                return redirect(path)
+        return redirect("/books")
 
     # Register blueprints to add routes to the app
     app.register_blueprint(HTML_BLUEPRINT)

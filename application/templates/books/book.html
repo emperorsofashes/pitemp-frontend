@@ -17,9 +17,30 @@
         </div>
     </div>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'message' else 'info' }} mb-3" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <div class="row">
+        {% if book.cover_key %}
+        <!-- Book Cover Column -->
+        <div class="col-md-4 mb-4 text-center">
+            <div class="card bg-dark text-white p-2">
+                <img src="{{ book.cover_key | cover_url }}" alt="{{ book.title }} Cover" class="img-fluid rounded shadow" style="max-height: 500px; object-fit: contain;">
+            </div>
+        </div>
         <!-- Book Details Column -->
+        <div class="col-md-8 mb-4">
+        {% else %}
+        <!-- Book Details Column (Full Width when no cover) -->
         <div class="col-md-12 mb-4">
+        {% endif %}
             <div class="card bg-dark text-white">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Book Details</h5>

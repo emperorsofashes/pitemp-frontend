@@ -11,6 +11,54 @@
 
     <a href="/books/{{ book.id }}" class="btn btn-secondary mb-3">Back to Book</a>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'message' else 'info' }} mb-3" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Book Cover Section -->
+    <div class="card bg-dark text-white mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Book Cover</h5>
+            <div class="row align-items-center">
+                <div class="col-md-3 col-sm-4 text-center mb-3 mb-md-0">
+                    {% if book.cover_key %}
+                        <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} Cover" class="img-fluid rounded border border-secondary shadow-sm" style="max-height: 220px; object-fit: contain;">
+                    {% else %}
+                        <div class="p-4 border border-secondary rounded text-muted d-flex align-items-center justify-content-center" style="height: 180px; background-color: rgba(255,255,255,0.05);">
+                            <span>No cover image</span>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="col-md-9 col-sm-8">
+                    <form action="/books/{{ book.id }}/cover" method="POST" enctype="multipart/form-data" class="mb-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div class="form-group mb-2">
+                            <label for="cover_image">{% if book.cover_key %}Replace Cover Image{% else %}Upload Cover Image{% endif %}</label>
+                            <input type="file" name="cover_image" id="cover_image" class="form-control-file text-white" accept="image/*" required>
+                            <small class="form-text text-muted">Supports JPEG, PNG, WebP (max 10 MB). Automatically processed into full-size and thumbnail AVIF images.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            {% if book.cover_key %}Replace Cover{% else %}Upload Cover{% endif %}
+                        </button>
+                    </form>
+
+                    {% if book.cover_key %}
+                        <form action="/books/{{ book.id }}/cover/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this cover image?');" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Delete Cover</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card bg-dark text-white">
         <div class="card-body">
             <h5 class="card-title">Book Details</h5>

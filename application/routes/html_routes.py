@@ -5,7 +5,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from application import DISKS_DATABASE_CONFIG_KEY, DisksDao
 from application.constants.app_constants import (
@@ -14,12 +14,15 @@ from application.constants.app_constants import (
     BOOKS_DATABASE_CONFIG_KEY,
     DATABASE_CONFIG_KEY,
     DATETIME_FORMAT_STRING,
+    R2_STORAGE_CONFIG_KEY,
 )
 from application.constants.beer_constants import BEER_STYLES_V1, BEER_STYLES_V2, ROWDY_USERNAME
 from application.constants.bird_constants import CARTO_API_KEY
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.book.dao import BookDao
+from application.data.book.image_processor import ImageValidationError, process_book_cover
+from application.data.storage.r2_storage import R2Storage
 from application.data.book.providers import (
     BookSearchMerger,
     GoogleBooksProvider,
@@ -688,10 +691,152 @@ def books_edit_book(book_id):
     return render_template("books/edit_book.html", book=book)
 
 
+@HTML_BLUEPRINT.route("/books/<book_id>/cover", methods=["POST"])
+def books_upload_cover(book_id):
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        flash("Database is not configured.", "danger")
+        return redirect("/books")
+
+    book = book_dao.get_book(book_id)
+    if book is None:
+        flash("Book not found.", "danger")
+        return redirect("/books")
+
+    r2_storage = _get_r2_storage()
+    if r2_storage is None:
+        LOG.error("Cloudflare R2 storage is not configured.")
+        flash("Cloudflare R2 storage is not configured.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Verify an image file was supplied
+    file = request.files.get("cover_image") or request.files.get("cover")
+    if not file or not file.filename:
+        flash("No image file was selected.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Validate and process image
+    try:
+        file_bytes = file.read()
+        if not file_bytes:
+            flash("The uploaded file is empty.", "danger")
+            return redirect(f"/books/edit/{book_id}")
+
+        full_bytes, thumb_bytes = process_book_cover(file_bytes)
+    except ImageValidationError as e:
+        LOG.warning(f"Image validation failed for book {book_id}: {e}")
+        flash(str(e), "danger")
+        return redirect(f"/books/edit/{book_id}")
+    except Exception as e:
+        LOG.error(f"Unexpected error validating image for book {book_id}: {e}")
+        flash("Failed to process cover image.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    new_cover_key = f"covers/{book_id}.avif"
+    new_thumb_key = f"covers/{book_id}_thumb.avif"
+    old_cover_key = book.cover_key
+
+    # Upload to R2 with rollback on failure
+    uploaded_keys = []
+    try:
+        r2_storage.upload_file(new_cover_key, full_bytes, content_type="image/avif")
+        uploaded_keys.append(new_cover_key)
+
+        r2_storage.upload_file(new_thumb_key, thumb_bytes, content_type="image/avif")
+        uploaded_keys.append(new_thumb_key)
+    except Exception as e:
+        LOG.error(f"Failed to upload images to R2 for book {book_id}: {e}")
+        # Partial upload cleanup where practical
+        for key in uploaded_keys:
+            try:
+                r2_storage.delete_file(key)
+            except Exception as cleanup_err:
+                LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
+        flash("Failed to upload cover images to Cloudflare R2.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Update MongoDB
+    try:
+        updated = book_dao.set_cover_key(book_id, new_cover_key)
+        if not updated:
+            raise RuntimeError(f"Could not update cover_key in MongoDB for book {book_id}")
+    except Exception as e:
+        LOG.error(f"MongoDB update failed for book {book_id} after R2 upload: {e}")
+        # Roll back uploaded R2 objects
+        for key in uploaded_keys:
+            try:
+                r2_storage.delete_file(key)
+            except Exception as cleanup_err:
+                LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
+        flash("Failed to update book cover in database.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Only after the new cover is successfully stored and referenced should the old objects be deleted
+    if old_cover_key and old_cover_key != new_cover_key:
+        try:
+            r2_storage.delete_cover_and_thumb(old_cover_key)
+        except Exception as e:
+            LOG.warning(f"Failed to delete previous cover objects for book {book_id}: {e}")
+
+    flash("Cover image uploaded successfully.", "success")
+    return redirect(f"/books/edit/{book_id}")
+
+
+@HTML_BLUEPRINT.route("/books/<book_id>/cover/delete", methods=["POST"])
+def books_delete_cover(book_id):
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        flash("Database is not configured.", "danger")
+        return redirect("/books")
+
+    book = book_dao.get_book(book_id)
+    if book is None:
+        flash("Book not found.", "danger")
+        return redirect("/books")
+
+    r2_storage = _get_r2_storage()
+    old_cover_key = book.cover_key
+
+    if old_cover_key:
+        if r2_storage:
+            try:
+                r2_storage.delete_cover_and_thumb(old_cover_key)
+            except Exception as e:
+                LOG.error(f"Failed to delete cover from R2 for book {book_id}: {e}")
+
+        # Remove cover_key from MongoDB
+        book_dao.delete_cover_key(book_id)
+        flash("Cover image deleted successfully.", "success")
+    else:
+        flash("Book does not have a cover image to delete.", "warning")
+
+    return redirect(f"/books/edit/{book_id}")
+
+
 @HTML_BLUEPRINT.route("/books/delete/<book_id>", methods=["POST"])
 def books_delete(book_id):
     book_dao = _get_books_dao()
     if book_dao is not None:
+        book = book_dao.get_book(book_id)
+        if book and book.cover_key:
+            r2_storage = _get_r2_storage()
+            if r2_storage:
+                try:
+                    r2_storage.delete_cover_and_thumb(book.cover_key)
+                except Exception as e:
+                    LOG.error(f"Failed to delete cover from R2 for book {book_id}: {e}")
         book_dao.delete_book(book_id)
     return redirect("/books")
 
@@ -931,3 +1076,7 @@ def _get_birds_dao() -> BirdDao | None:
 
 def _get_books_dao() -> BookDao | None:
     return current_app.config.get(BOOKS_DATABASE_CONFIG_KEY)
+
+
+def _get_r2_storage() -> R2Storage | None:
+    return current_app.config.get(R2_STORAGE_CONFIG_KEY)
