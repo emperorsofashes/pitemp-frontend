@@ -546,7 +546,36 @@ def books_index():
         return render_template("books/not_configured.html")
 
     books = book_dao.get_all_books()
-    return render_template("books/index.html", books=books)
+    return render_template("books/index.html", books=books, edit_mode=False)
+
+
+@HTML_BLUEPRINT.route("/books/edit")
+def books_edit():
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        return render_template("books/not_configured.html")
+
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
+    books = book_dao.get_all_books()
+    return render_template("books/index.html", books=books, edit_mode=True)
+
+
+@HTML_BLUEPRINT.route("/books/<book_id>")
+def book_details(book_id):
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        return render_template("books/not_configured.html")
+
+    book = book_dao.get_book(book_id)
+    if book is None:
+        return redirect("/books")
+
+    return render_template("books/book.html", book=book)
 
 
 @HTML_BLUEPRINT.route("/books/add", methods=["GET", "POST"])
@@ -600,6 +629,71 @@ def books_add():
         ))
 
     return render_template("books/add_book.html")
+
+
+@HTML_BLUEPRINT.route("/books/edit/<book_id>", methods=["GET", "POST"])
+def books_edit_book(book_id):
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        return redirect("/books")
+
+    if request.method == "POST":
+        title = request.form.get("title")
+        authors_str = request.form.get("authors")
+        date_published_str = request.form.get("date_published")
+        isbn = request.form.get("isbn")
+        oclc_number = request.form.get("oclc_number")
+        page_count_str = request.form.get("page_count")
+
+        # Parse authors (comma-separated)
+        authors = [a.strip() for a in authors_str.split(",") if a.strip()]
+
+        # Parse date published
+        date_published = None
+        if date_published_str:
+            try:
+                date_published = datetime.strptime(date_published_str, "%Y-%m-%d")
+            except ValueError:
+                pass
+
+        # Parse page count
+        page_count = None
+        if page_count_str:
+            try:
+                page_count = int(page_count_str)
+            except ValueError:
+                pass
+
+        book_dao.update_book(
+            book_id=book_id,
+            title=title,
+            authors=authors,
+            date_published=date_published,
+            isbn=isbn,
+            oclc_number=oclc_number,
+            page_count=page_count,
+        )
+        return redirect(f"/books/{book_id}")
+
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
+    book = book_dao.get_book(book_id)
+    if book is None:
+        return redirect("/books")
+
+    return render_template("books/edit_book.html", book=book)
+
+
+@HTML_BLUEPRINT.route("/books/delete/<book_id>", methods=["POST"])
+def books_delete(book_id):
+    book_dao = _get_books_dao()
+    if book_dao is not None:
+        book_dao.delete_book(book_id)
+    return redirect("/books")
 
 
 @HTML_BLUEPRINT.route("/api/book-lookup/")

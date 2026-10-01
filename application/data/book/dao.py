@@ -133,6 +133,36 @@ class BookDao:
         self._retry_cache_delete_async("all_books_page_count_-1")
         return str(result.inserted_id)
 
+    def update_book(
+        self,
+        book_id: str,
+        title: str,
+        authors: list[str],
+        date_published: datetime | None = None,
+        isbn: str | None = None,
+        oclc_number: str | None = None,
+        page_count: int | None = None,
+    ) -> bool:
+        """Update a book in the collection."""
+        try:
+            document = {
+                "title": title,
+                "authors": authors,
+                "date_published": date_published,
+                "isbn": isbn,
+                "oclc_number": oclc_number,
+                "page_count": page_count,
+            }
+            result = self.books_collection.update_one({"_id": ObjectId(book_id)}, {"$set": document})
+            self._retry_cache_delete_async("all_books_title_-1")
+            self._retry_cache_delete_async("all_books_date_published_-1")
+            self._retry_cache_delete_async("all_books_date_added_-1")
+            self._retry_cache_delete_async("all_books_page_count_-1")
+            self._retry_cache_delete_async(f"book_{book_id}")
+            return result.modified_count > 0
+        except Exception:
+            return False
+
     def delete_book(self, book_id: str) -> bool:
         """Delete a book from the collection."""
         try:
@@ -141,6 +171,7 @@ class BookDao:
             self._retry_cache_delete_async("all_books_date_published_-1")
             self._retry_cache_delete_async("all_books_date_added_-1")
             self._retry_cache_delete_async("all_books_page_count_-1")
+            self._retry_cache_delete_async(f"book_{book_id}")
             return result.deleted_count > 0
         except Exception:
             return False
