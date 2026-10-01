@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from application.data.book.providers.base import BookMetadata, BookMetadataProvider
 
@@ -26,20 +27,24 @@ class MetadataMerger:
         merged_metadata = BookMetadata()
         provider_status = {}
 
-        for provider in self.providers:
-            try:
-                metadata = provider.lookup(isbn)
-                
-                if metadata and provider._has_data(metadata):
-                    # Merge this provider's data into the merged result
-                    self._merge_metadata(merged_metadata, metadata, provider.name)
-                    provider_status[provider.name] = "success"
-                else:
-                    provider_status[provider.name] = "no_match"
-                    
-            except Exception as e:
-                LOG.error(f"Error in provider {provider.name}: {e}")
-                provider_status[provider.name] = "error"
+        # Fetch from all providers in parallel to avoid worst-case serial latency.
+        with ThreadPoolExecutor(max_workers=len(self.providers)) as executor:
+            futures = {provider: executor.submit(provider.lookup, isbn) for provider in self.providers}
+
+            for provider, future in futures.items():
+                try:
+                    metadata = future.result()
+
+                    if metadata and provider._has_data(metadata):
+                        # Merge this provider's data into the merged result
+                        self._merge_metadata(merged_metadata, metadata, provider.name)
+                        provider_status[provider.name] = 'success'
+                    else:
+                        provider_status[provider.name] = 'no_match'
+
+                except Exception as e:
+                    LOG.error(f'Error in provider {provider.name}: {e}')
+                    provider_status[provider.name] = 'error'
 
         return merged_metadata, provider_status
 

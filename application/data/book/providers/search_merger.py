@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from concurrent.futures import ThreadPoolExecutor
 
 from application.data.book.providers.base import BookMetadataProvider, SearchResult
 
@@ -27,27 +27,32 @@ class BookSearchMerger:
         Returns:
             Tuple of (deduplicated_results, provider_status)
             provider_status maps provider name to "success", "no_match", or "error"
-        """
+         """
         all_results = []
         provider_status = {}
 
-        for provider in self.providers:
-            try:
-                results = provider.search(query, max_results_per_provider)
-                
-                if results:
-                    all_results.extend(results)
-                    provider_status[provider.name] = "success"
-                else:
-                    provider_status[provider.name] = "no_match"
-                    
-            except Exception as e:
-                LOG.error(f"Error in provider {provider.name}: {e}")
-                provider_status[provider.name] = "error"
+        # Fetch from all providers in parallel to avoid worst-case serial latency.
+        with ThreadPoolExecutor(max_workers=len(self.providers)) as executor:
+            futures = {provider: executor.submit(provider.search, query, max_results_per_provider) for provider in
+                       self.providers}
+
+            for provider, future in futures.items():
+                try:
+                    results = future.result()
+
+                    if results:
+                        all_results.extend(results)
+                        provider_status[provider.name] = 'success'
+                    else:
+                        provider_status[provider.name] = 'no_match'
+
+                except Exception as e:
+                    LOG.error(f'Error in provider {provider.name}: {e}')
+                    provider_status[provider.name] = 'error'
 
         # Deduplicate results
         deduplicated = self._deduplicate_results(all_results)
-        
+
         return deduplicated, provider_status
 
     def _deduplicate_results(self, results: list[SearchResult]) -> list[SearchResult]:
@@ -85,7 +90,7 @@ class BookSearchMerger:
 
         # Now handle results without ISBN - group by title + author
         title_author_groups: dict[str, list[SearchResult]] = {}
-        
+
         for result in no_isbn_results:
             # Create a key from title and sorted authors
             key = self._create_title_author_key(result)
