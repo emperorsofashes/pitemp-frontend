@@ -22,7 +22,7 @@ class GoogleBooksProvider(BookMetadataProvider):
 
     def lookup(self, isbn: str) -> BookMetadata | None:
         """Look up book metadata by ISBN using Google Books API."""
-        isbn_clean = self._normalize_isbn(isbn)
+        isbn_clean = self.normalize_isbn(isbn)
 
         try:
             # Build URL
@@ -110,7 +110,7 @@ class GoogleBooksProvider(BookMetadataProvider):
                 metadata.isbn = isbn_clean
 
             # Track source
-            if self._has_data(metadata):
+            if self.has_data(metadata):
                 metadata.source_providers = {self.name: "primary"}
 
             return metadata

@@ -127,11 +127,13 @@ class BookMetadataProvider:
         """
         raise NotImplementedError("Subclasses must implement search method")
 
-    def _normalize_isbn(self, isbn: str) -> str:
+    @staticmethod
+    def normalize_isbn(isbn: str) -> str:
         """Remove hyphens and spaces from ISBN."""
         return isbn.replace("-", "").replace(" ", "")
 
-    def _has_data(self, metadata: BookMetadata) -> bool:
+    @staticmethod
+    def has_data(metadata: BookMetadata) -> bool:
         """Check if metadata contains any useful information."""
         return bool(
             metadata.title or

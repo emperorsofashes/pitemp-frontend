@@ -35,7 +35,7 @@ class MetadataMerger:
                 try:
                     metadata = future.result()
 
-                    if metadata and provider._has_data(metadata):
+                    if metadata and provider.has_data(metadata):
                         # Merge this provider's data into the merged result
                         self._merge_metadata(merged_metadata, metadata, provider.name)
                         provider_status[provider.name] = 'success'
@@ -48,7 +48,8 @@ class MetadataMerger:
 
         return merged_metadata, provider_status
 
-    def _merge_metadata(self, merged: BookMetadata, new: BookMetadata, provider_name: str) -> None:
+    @staticmethod
+    def _merge_metadata(merged: BookMetadata, new: BookMetadata, provider_name: str) -> None:
         """
         Merge new metadata into merged metadata with conflict resolution.
         

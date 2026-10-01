@@ -21,7 +21,7 @@ class LibraryOfCongressProvider(BookMetadataProvider):
 
     def lookup(self, isbn: str) -> BookMetadata | None:
         """Look up book metadata by ISBN using Library of Congress SRU API."""
-        isbn_clean = self._normalize_isbn(isbn)
+        isbn_clean = self.normalize_isbn(isbn)
 
         try:
             # Use SRU API with Dublin Core schema for easier parsing
@@ -105,7 +105,7 @@ class LibraryOfCongressProvider(BookMetadataProvider):
                 metadata.isbn = isbn_clean
 
             # Track source
-            if self._has_data(metadata):
+            if self.has_data(metadata):
                 metadata.source_providers = {self.name: "primary"}
 
             return metadata
