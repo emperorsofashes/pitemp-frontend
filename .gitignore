@@ -5,3 +5,4 @@ __pycache__/
 /.tox/
 /ssl/
 *.env
+CLAUDE.md
