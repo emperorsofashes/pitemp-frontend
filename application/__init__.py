@@ -85,7 +85,13 @@ def create_flask_app() -> Flask:
     username = os.environ.get("MONGO_USER")
     password = os.environ.get("MONGO_PASSWORD")
     host = os.environ.get("MONGO_HOST")
-    client = MongoClient(f"mongodb+srv://{username}:{password}@{host}/?retryWrites=true&w=majority")
+    client = MongoClient(
+        host=f"mongodb+srv://{host}/",
+        username=username,
+        password=password,
+        retryWrites=True,
+        w="majority",
+     )
 
     dao = ApplicationDao(client=client, cache=cache)
     app.config[DATABASE_CONFIG_KEY] = dao
