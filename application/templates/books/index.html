@@ -67,7 +67,7 @@
                 <td class="text-center" style="vertical-align: middle;">
                     {% if book.cover_key %}
                         <a href="/books/{{ book.id }}">
-                            <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} thumbnail" class="rounded" style="max-height: 50px; max-width: 40px; object-fit: contain;" loading="lazy">
+                            <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} thumbnail" class="rounded" style="max-height: 200px; max-width: 150px; object-fit: contain;" loading="lazy">
                         </a>
                     {% else %}
                         <span class="text-muted" style="font-size: 0.8rem;">—</span>
