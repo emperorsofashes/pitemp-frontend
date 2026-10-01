@@ -16,20 +16,14 @@
 <body>
 <header class="header-bar">
     <a href="/">Home</a>
-    <span class="header-separator">|</span>
-    <a href="/temp">Temperature</a>
-    <span class="header-separator">|</span>
-    <a href="/beers">Beer</a>
-    <span class="header-separator">|</span>
-    <a href="/disks">Disks</a>
-    <span class="header-separator">|</span>
-    <a href="/games">Games</a>
-    <span class="header-separator">|</span>
-    <a href="/birds">Birds</a>
-    <span class="header-separator">|</span>
-    <a href="/books">Books</a>
     {% if session.get('authenticated') %}
-    <span class="auth-indicator text-success font-weight-bold ml-auto mr-3" title="Authenticated" style="font-size: 1.2rem; line-height: 1;">✓</span>
+        <a class="auth-indicator text-success font-weight-bold ml-auto" title="Authenticated" style="font-size: 1.2rem; line-height: 1;" href="/login">
+        <span>✓</span>
+        </a>
+    {% else %}
+        <a class="auth-indicator text-danger font-weight-bold ml-auto" title="Not Authenticated" style="font-size: 1.2rem; line-height: 1;" href="/login">
+        <span>✗</span>
+        </a>
     {% endif %}
 </header>
 <div id="content-block-div" class="h-100">
