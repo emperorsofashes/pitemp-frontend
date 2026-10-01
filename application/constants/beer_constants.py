@@ -1,7 +1,5 @@
 from datetime import timedelta
 
-DATABASE_CONFIG_KEY = "db_config_key"
-
 DB_NAME = "untappd"
 BEERS_COLLECTION_NAME = "beers"
 BEERS_ROWDY_COLLECTION_NAME = "beers_rowdy"
