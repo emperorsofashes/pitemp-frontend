@@ -3,6 +3,119 @@
 {% block header %}
     <title>Add Book to Collection</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        /* Scanner Modal Styles */
+        #scanner-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #scanner-modal.active {
+            display: flex;
+        }
+
+        .scanner-wrapper {
+            position: relative;
+            width: 90%;
+            max-width: 640px;
+        }
+
+        /* html5-qrcode reader container */
+        #reader {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Override html5-qrcode default styles */
+        #reader video {
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        #reader__scan_region {
+            outline: none !important;
+        }
+
+        #reader__dashboard {
+            display: none !important;
+        }
+
+        /* Custom overlay for scan guide */
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* The actual green scan guide rectangle */
+        .scan-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            height: 40%;
+            border: 3px solid #00ff00;
+            border-radius: 8px;
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+        }
+
+        .scan-guide::before,
+        .scan-guide::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: #00ff00;
+            border-style: solid;
+        }
+
+        .scan-guide::before {
+            top: -3px;
+            left: -3px;
+            border-width: 4px 0 0 4px;
+        }
+
+        .scan-guide::after {
+            bottom: -3px;
+            right: -3px;
+            border-width: 0 4px 4px 0;
+        }
+
+        .scanner-controls {
+            margin-top: 20px;
+            text-align: center;
+            width: 90%;
+            max-width: 640px;
+        }
+
+        .scanner-instruction {
+            color: white;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .scanner-status {
+            color: #00ff00;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            min-height: 20px;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -34,10 +147,13 @@
                                 <input type="text" id="isbn_lookup" class="form-control bg-dark text-white border-secondary"
                                        placeholder="ISBN-10 or ISBN-13">
                                 <div class="input-group-append">
+                                    <button type="button" id="scan-barcode-btn" class="btn btn-info" title="Scan ISBN barcode">
+                                        📷 Scan
+                                    </button>
                                     <button type="button" id="lookup-btn" class="btn btn-info">Look up</button>
                                 </div>
                             </div>
-                            <small class="text-muted">Enter an ISBN to automatically populate book details from multiple sources</small>
+                            <small class="text-muted">Enter an ISBN to automatically populate book details from multiple sources, or use the camera to scan a barcode</small>
                         </div>
                         <div id="lookup-status" class="mt-2"></div>
                         <div id="provider-status"></div>
@@ -108,7 +224,23 @@
     </div>
 </div>
 
+<!-- Scanner Modal -->
+<div id="scanner-modal">
+    <div class="scanner-wrapper">
+        <div id="reader"></div>
+        <div class="scanner-overlay">
+            <div class="scan-guide"></div>
+        </div>
+    </div>
+    <div class="scanner-controls">
+        <p class="scanner-instruction">Position the ISBN barcode inside the green box</p>
+        <p class="scanner-status" id="scanner-status">Initializing camera...</p>
+        <button type="button" id="close-scanner-btn" class="btn btn-danger">Cancel</button>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
 // Initialize Flatpickr for date picker
 flatpickr("#date_published", {
@@ -467,5 +599,179 @@ function showSearchStatus(message, type) {
         }, 5000);
     }
 }
+
+// Barcode Scanner Functionality
+const scanBarcodeBtn = document.getElementById('scan-barcode-btn');
+const closeScannerBtn = document.getElementById('close-scanner-btn');
+const scannerModal = document.getElementById('scanner-modal');
+const scannerStatus = document.getElementById('scanner-status');
+let html5QrCode = null;
+let isScanning = false;
+let lastScannedISBN = null;
+let scannerLocked = false;
+
+// ISBN-13 validation function
+function isValidISBN13(isbn) {
+    isbn = isbn.replace(/[-\s]/g, '');
+    if (isbn.length !== 13) return false;
+    
+    let sum = 0;
+    for (let i = 0; i < 13; i++) {
+        const digit = parseInt(isbn[i]);
+        if (isNaN(digit)) return false;
+        sum += (i % 2 === 0) ? digit : digit * 3;
+    }
+    
+    return sum % 10 === 0;
+}
+
+// Check if barcode is an ISBN (starts with 978 or 979 for ISBN-13)
+function isISBNBarcode(code) {
+    code = code.replace(/[-\s]/g, '');
+    
+    // ISBN-13 barcodes start with 978 or 979
+    if (code.length === 13 && (code.startsWith('978') || code.startsWith('979'))) {
+        return isValidISBN13(code);
+    }
+    
+    return false;
+}
+
+// Open scanner
+scanBarcodeBtn.addEventListener('click', function() {
+    if (isScanning) return;
+    
+    scannerModal.classList.add('active');
+    scannerStatus.textContent = 'Requesting camera permission...';
+    scannerLocked = false;
+    lastScannedISBN = null;
+    
+    startScanner();
+});
+
+// Close scanner
+closeScannerBtn.addEventListener('click', function() {
+    stopScanner();
+    scannerModal.classList.remove('active');
+});
+
+// Start html5-qrcode scanner
+function startScanner() {
+    if (!Html5Qrcode) {
+        scannerStatus.textContent = 'Error: Barcode scanner library not loaded';
+        isScanning = false;
+        return;
+    }
+    
+    isScanning = true;
+    
+    // Clean up existing instance if any
+    if (html5QrCode) {
+        try {
+            html5QrCode.stop().catch(err => {
+                console.error('Error stopping previous scanner:', err);
+            });
+            html5QrCode.clear();
+        } catch (e) {
+            console.error('Error cleaning up previous scanner:', e);
+        }
+    }
+    
+    html5QrCode = new Html5Qrcode("reader");
+    
+    const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 150 },
+    };
+    
+    html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure
+    ).catch(err => {
+        console.error('Scanner initialization error:', err);
+        let errorMessage = 'Error: Could not access camera.';
+        
+        // Provide specific error messages
+        if (err.name === 'NotAllowedError' || err === 'Permission denied') {
+            errorMessage = 'Error: Camera permission denied. Please allow camera access and try again.';
+        } else if (err.name === 'NotFoundError' || err === 'No camera found') {
+            errorMessage = 'Error: No camera found. Please ensure a camera is connected.';
+        } else if (err.name === 'NotReadableError' || err === 'Camera already in use') {
+            errorMessage = 'Error: Camera is already in use by another application.';
+        } else if (err.name === 'SecurityError') {
+            errorMessage = 'Error: Camera access requires HTTPS (or localhost for development).';
+        } else {
+            errorMessage = `Error: ${err || 'Could not access camera'}`;
+        }
+        
+        scannerStatus.textContent = errorMessage;
+        isScanning = false;
+    });
+    
+    function onScanSuccess(decodedText, decodedResult) {
+        if (scannerLocked) return;
+        
+        console.log('Detected barcode:', decodedText, decodedResult);
+        
+        // Check if it's a valid ISBN barcode
+        if (!isISBNBarcode(decodedText)) {
+            console.log('Not a valid ISBN barcode, ignoring');
+            return;
+        }
+        
+        // Prevent duplicate scans
+        if (lastScannedISBN === decodedText) {
+            console.log('Duplicate ISBN, ignoring');
+            return;
+        }
+        
+        lastScannedISBN = decodedText;
+        scannerLocked = true;
+        scannerStatus.textContent = `ISBN detected: ${decodedText}. Looking up book...`;
+        
+        // Stop scanner and perform lookup
+        stopScanner();
+        scannerModal.classList.remove('active');
+        
+        // Populate ISBN field and perform lookup
+        document.getElementById('isbn_lookup').value = decodedText;
+        performLookup(decodedText);
+    }
+    
+    function onScanFailure(error) {
+        // Scan failure is normal - no barcode in frame
+        // Don't log to avoid console spam
+    }
+}
+
+// Stop scanner and cleanup
+function stopScanner() {
+    if (!isScanning || !html5QrCode) return;
+    
+    isScanning = false;
+    
+    html5QrCode.stop().then(() => {
+        html5QrCode.clear();
+        html5QrCode = null;
+    }).catch(err => {
+        console.error('Error stopping scanner:', err);
+        html5QrCode = null;
+    });
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    stopScanner();
+});
+
+// Handle visibility change (stop camera when tab is hidden)
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden && isScanning) {
+        stopScanner();
+        scannerModal.classList.remove('active');
+    }
+});
 </script>
 {% endblock %}
