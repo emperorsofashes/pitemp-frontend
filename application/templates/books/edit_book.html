@@ -22,28 +22,28 @@
     {% endwith %}
 
     <!-- Book Cover Section -->
-    <div class="card bg-dark text-white mb-4">
+    <div class="card bg-dark text-white mb-4" id="cover-drop-zone">
         <div class="card-body">
             <h5 class="card-title">Book Cover</h5>
             <div class="row align-items-center">
-                <div class="col-md-3 col-sm-4 text-center mb-3 mb-md-0">
+                <div class="col-md-3 col-sm-4 text-center mb-3 mb-md-0" id="cover-preview-container">
                     {% if book.cover_key %}
-                        <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} Cover" class="img-fluid rounded border border-secondary shadow-sm" style="max-height: 220px; object-fit: contain;">
+                        <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} Cover" class="img-fluid rounded border border-secondary shadow-sm" style="max-height: 220px; object-fit: contain;" id="cover-preview">
                     {% else %}
-                        <div class="p-4 border border-secondary rounded text-muted d-flex align-items-center justify-content-center" style="height: 180px; background-color: rgba(255,255,255,0.05);">
+                        <div class="p-4 border border-secondary rounded text-muted d-flex align-items-center justify-content-center" style="height: 180px; background-color: rgba(255,255,255,0.05);" id="cover-placeholder">
                             <span>No cover image</span>
                         </div>
                     {% endif %}
                 </div>
                 <div class="col-md-9 col-sm-8">
-                    <form action="/books/{{ book.id }}/cover" method="POST" enctype="multipart/form-data" class="mb-3">
+                    <form action="/books/{{ book.id }}/cover" method="POST" enctype="multipart/form-data" class="mb-3" id="cover-upload-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="form-group mb-2">
                             <label for="cover_image">{% if book.cover_key %}Replace Cover Image{% else %}Upload Cover Image{% endif %}</label>
                             <input type="file" name="cover_image" id="cover_image" class="form-control-file text-white" accept="image/*" required>
-                            <small class="form-text text-muted">Supports JPEG, PNG, WebP (max 10 MB). Automatically processed into full-size and thumbnail AVIF images.</small>
+                            <small class="form-text text-muted">Supports JPEG, PNG, WebP (max 10 MB). Drag & drop an image here, paste with Ctrl+V, or click to browse. Automatically processed into full-size and thumbnail AVIF images.</small>
                         </div>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="upload-btn">
                             {% if book.cover_key %}Replace Cover{% else %}Upload Cover{% endif %}
                         </button>
                     </form>
@@ -117,5 +117,77 @@ flatpickr("#date_published", {
     dateFormat: "Y-m-d",
     allowInput: true
 });
+
+// Drag and drop support for cover image upload
+const dropZone = document.getElementById('cover-drop-zone');
+const fileInput = document.getElementById('cover_image');
+const uploadForm = document.getElementById('cover-upload-form');
+const uploadBtn = document.getElementById('upload-btn');
+
+// Prevent default drag behaviors
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+    document.body.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+// Highlight drop zone when dragging over
+['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, unhighlight, false);
+});
+
+function highlight(e) {
+    dropZone.style.backgroundColor = 'rgba(91, 192, 235, 0.1)';
+    dropZone.style.borderColor = '#5BC0EB';
+}
+
+function unhighlight(e) {
+    dropZone.style.backgroundColor = '';
+    dropZone.style.borderColor = '';
+}
+
+// Handle dropped files
+dropZone.addEventListener('drop', handleDrop, false);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+
+    if (files.length > 0) {
+        fileInput.files = files;
+        uploadForm.submit();
+    }
+}
+
+// Ctrl+V paste support
+document.addEventListener('paste', handlePaste, false);
+
+function handlePaste(e) {
+    const items = e.clipboardData.items;
+    let blob = null;
+
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            blob = items[i].getAsFile();
+            break;
+        }
+    }
+
+    if (blob) {
+        const file = new File([blob], 'pasted-image.png', { type: blob.type });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
+        uploadForm.submit();
+    }
+}
 </script>
 {% endblock %}
