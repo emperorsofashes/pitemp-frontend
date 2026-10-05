@@ -27,6 +27,8 @@ from application.data.book.providers import (
     GoogleBooksProvider,
     LibraryOfCongressProvider,
     MetadataMerger,
+    NDLSearchProvider,
+    OpenBDProvider,
     OpenLibraryProvider,
 )
 from application.data.storage.r2_storage import R2Storage
@@ -913,6 +915,8 @@ def book_lookup():
         merger.add_provider(OpenLibraryProvider(timeout=10))
         merger.add_provider(GoogleBooksProvider(timeout=10))
         merger.add_provider(LibraryOfCongressProvider(timeout=10))
+        merger.add_provider(OpenBDProvider(timeout=10))
+        merger.add_provider(NDLSearchProvider(timeout=10))
 
         # Query all providers and merge results
         metadata, provider_status = merger.lookup(isbn_clean)
@@ -986,6 +990,8 @@ def book_search():
         merger.add_provider(OpenLibraryProvider(timeout=10))
         merger.add_provider(GoogleBooksProvider(timeout=10))
         merger.add_provider(LibraryOfCongressProvider(timeout=10))
+        merger.add_provider(OpenBDProvider(timeout=10))
+        merger.add_provider(NDLSearchProvider(timeout=10))
 
         # Search across all providers
         results, provider_status = merger.search(query, max_results_per_provider=10)

@@ -6,6 +6,8 @@ from application.data.book.providers.base import BookMetadata, BookMetadataProvi
 from application.data.book.providers.googlebooks import GoogleBooksProvider
 from application.data.book.providers.loc import LibraryOfCongressProvider
 from application.data.book.providers.merger import MetadataMerger
+from application.data.book.providers.ndl import NDLSearchProvider
+from application.data.book.providers.openbd import OpenBDProvider
 from application.data.book.providers.openlibrary import OpenLibraryProvider
 from application.data.book.providers.search_merger import BookSearchMerger
 
@@ -242,6 +244,125 @@ class TestLibraryOfCongressProvider:
         
         with patch('requests.get', return_value=mock_response):
             metadata = provider.lookup("9999999999")
+            
+            assert metadata is None
+
+
+class TestOpenBDProvider:
+    """Test openBD provider."""
+
+    def test_lookup_complete_record(self):
+        """Test openBD returns a complete record."""
+        provider = OpenBDProvider()
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [{
+            "summary": {
+                "title": "Test Book",
+                "author": "Test Author",
+                "publisher": "Test Publisher",
+                "pubdate": "20200101",
+                "extent": "300p",
+                "isbn": "9784000000000",
+                "cover": "http://example.com/cover.jpg"
+            }
+        }]
+        
+        with patch('requests.get', return_value=mock_response):
+            metadata = provider.lookup("9784000000000")
+            
+            assert metadata is not None
+            assert metadata.title == "Test Book"
+            assert metadata.authors == ["Test Author"]
+            assert metadata.publisher == "Test Publisher"
+            assert metadata.page_count == 300
+            assert metadata.cover_url == "https://example.com/cover.jpg"
+
+    def test_lookup_no_match(self):
+        """Test openBD returns no match."""
+        provider = OpenBDProvider()
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = []
+        
+        with patch('requests.get', return_value=mock_response):
+            metadata = provider.lookup("9999999999")
+            
+            assert metadata is None
+
+    def test_lookup_timeout(self):
+        """Test openBD request times out."""
+        provider = OpenBDProvider()
+        
+        with patch('requests.get', side_effect=Exception("Timeout")):
+            metadata = provider.lookup("9784000000000")
+            
+            assert metadata is None
+
+
+class TestNDLSearchProvider:
+    """Test NDL Search provider."""
+
+    def test_lookup_complete_record(self):
+        """Test NDL Search returns a complete record."""
+        provider = NDLSearchProvider()
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = """<?xml version="1.0"?>
+        <srw:searchRetrieveResponse xmlns:srw="http://www.loc.gov/zing/srw/">
+            <srw:records>
+                <srw:record>
+                    <srw:recordData>
+                        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+                            <dc:dc xmlns:dc="http://purl.org/dc/elements/1.1/">
+                                <dc:title>Test Book</dc:title>
+                                <dc:creator>Test Author</dc:creator>
+                                <dc:publisher>Test Publisher</dc:publisher>
+                                <dcterms:issued xmlns:dcterms="http://purl.org/dc/terms/">2020</dcterms:issued>
+                                <dc:identifier>ISBN 1234567890</dc:identifier>
+                                <dcndl:extent xmlns:dcndl="http://ndl.go.jp/dcndl/terms/">300p</dcndl:extent>
+                            </dc:dc>
+                        </rdf:RDF>
+                    </srw:recordData>
+                </srw:record>
+            </srw:records>
+        </srw:searchRetrieveResponse>"""
+        
+        with patch('requests.get', return_value=mock_response):
+            metadata = provider.lookup("1234567890")
+            
+            assert metadata is not None
+            assert metadata.title == "Test Book"
+            assert metadata.authors == ["Test Author"]
+            assert metadata.publisher == "Test Publisher"
+            assert metadata.page_count == 300
+
+    def test_lookup_no_match(self):
+        """Test NDL Search returns no match."""
+        provider = NDLSearchProvider()
+        
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = """<?xml version="1.0"?>
+        <srw:searchRetrieveResponse xmlns:srw="http://www.loc.gov/zing/srw/">
+            <srw:records>
+            </srw:records>
+        </srw:searchRetrieveResponse>"""
+        
+        with patch('requests.get', return_value=mock_response):
+            metadata = provider.lookup("9999999999")
+            
+            assert metadata is None
+
+    def test_lookup_timeout(self):
+        """Test NDL Search request times out."""
+        provider = NDLSearchProvider()
+        
+        with patch('requests.get', side_effect=Exception("Timeout")):
+            metadata = provider.lookup("1234567890")
             
             assert metadata is None
 
