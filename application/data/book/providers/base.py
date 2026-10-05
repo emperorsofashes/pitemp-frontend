@@ -142,3 +142,7 @@ class BookMetadataProvider:
             metadata.page_count or
             metadata.publisher
         )
+
+    # Aliases for backward compatibility
+    _normalize_isbn = normalize_isbn
+    _has_data = has_data

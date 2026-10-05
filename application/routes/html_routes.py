@@ -14,7 +14,7 @@ from application.constants.app_constants import (
     BOOKS_DATABASE_CONFIG_KEY,
     DATABASE_CONFIG_KEY,
     DATETIME_FORMAT_STRING,
-    R2_STORAGE_CONFIG_KEY,
+    R2_CLIENT_CONFIG_KEY,
 )
 from application.constants.beer_constants import BEER_STYLES_V1, BEER_STYLES_V2, ROWDY_USERNAME
 from application.constants.bird_constants import CARTO_API_KEY
@@ -22,7 +22,7 @@ from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.book.dao import BookDao
 from application.data.book.image_processor import ImageValidationError, process_book_cover
-from application.data.storage.r2_storage import R2Storage
+from application.data.storage.r2_storage import R2Storage, derive_thumb_key
 from application.data.book.providers import (
     BookSearchMerger,
     GoogleBooksProvider,
@@ -1079,4 +1079,24 @@ def _get_books_dao() -> BookDao | None:
 
 
 def _get_r2_storage() -> R2Storage | None:
-    return current_app.config.get(R2_STORAGE_CONFIG_KEY)
+    return current_app.config.get(R2_CLIENT_CONFIG_KEY)
+
+
+def _get_cover_url(cover_key: str | None) -> str | None:
+    """Get the public URL for a book cover."""
+    if not cover_key:
+        return None
+    r2_storage = _get_r2_storage()
+    if r2_storage:
+        return r2_storage.get_public_url(cover_key)
+    return None
+
+
+def _get_thumbnail_url(cover_key: str | None) -> str | None:
+    """Get the public URL for a book cover thumbnail."""
+    if not cover_key:
+        return None
+    r2_storage = _get_r2_storage()
+    if r2_storage:
+        return r2_storage.get_thumb_url(cover_key)
+    return None

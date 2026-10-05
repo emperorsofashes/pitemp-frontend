@@ -1,5 +1,8 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import quote
+
+import requests
 
 from application.data.book.providers.base import BookMetadata, BookMetadataProvider
 
@@ -45,6 +48,10 @@ class MetadataMerger:
                 except Exception as e:
                     LOG.error(f'Error in provider {provider.name}: {e}')
                     provider_status[provider.name] = 'error'
+
+        # If no cover was found by the providers during lookup, really try to find one automatically!
+        if not merged_metadata.cover_url:
+            self._try_find_cover(isbn, merged_metadata)
 
         return merged_metadata, provider_status
 
@@ -132,7 +139,110 @@ class MetadataMerger:
             merged.description = new.description
             merged.source_providers["description"] = provider_name
 
-        # Cover URL: Prefer larger images
-        if new.cover_url and not merged.cover_url:
-            merged.cover_url = new.cover_url
-            merged.source_providers["cover_url"] = provider_name
+        # Cover URL: Prefer larger/higher-resolution images
+        if new.cover_url:
+            if not merged.cover_url:
+                merged.cover_url = new.cover_url
+                merged.source_providers["cover_url"] = provider_name
+            elif MetadataMerger._is_higher_res_cover(new.cover_url, merged.cover_url):
+                merged.cover_url = new.cover_url
+                merged.source_providers["cover_url"] = provider_name
+
+    @staticmethod
+    def _is_higher_res_cover(new_url: str, current_url: str) -> bool:
+        """Heuristic to check if a new cover URL is higher quality than the current one."""
+        def score(u: str) -> int:
+            if not u:
+                return 0
+            u_lower = u.lower()
+            if "-l." in u_lower or "extralarge" in u_lower:
+                return 4
+            if "-m." in u_lower or "large" in u_lower:
+                return 3
+            if "medium" in u_lower:
+                return 2
+            if "thumbnail" in u_lower:
+                return 1
+            return 1
+        return score(new_url) > score(current_url)
+
+    def _try_find_cover(self, isbn: str, merged: BookMetadata) -> None:
+        """
+        Exhaustively attempt to find a cover image for the book:
+        1. Check Open Library Covers API directly by ISBN.
+        2. If not found, and title is available, query Google Books by title/author.
+        3. If not found, and title is available, query Open Library Search API by title.
+        """
+        clean_isbn = BookMetadataProvider.normalize_isbn(isbn) if isbn else ""
+        if not clean_isbn and merged.isbn:
+            clean_isbn = BookMetadataProvider.normalize_isbn(merged.isbn)
+
+        # Strategy 1: Direct Open Library cover check by ISBN
+        if clean_isbn:
+            try:
+                check_url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-L.jpg?default=false"
+                resp = requests.head(
+                    check_url,
+                    timeout=5,
+                    allow_redirects=True,
+                    headers={"User-Agent": "BookCatalog/1.0"}
+                )
+                if resp.status_code == 200:
+                    merged.cover_url = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-L.jpg"
+                    merged.source_providers["cover_url"] = "Open Library (Covers API)"
+                    return
+            except Exception as e:
+                LOG.debug(f"Direct Open Library cover lookup failed: {e}")
+
+        # Strategy 2: If title is available, search Google Books for a volume with cover
+        if merged.title:
+            try:
+                query = f'intitle:"{merged.title}"'
+                if merged.authors:
+                    query += f' inauthor:"{merged.authors[0]}"'
+                url = f"https://www.googleapis.com/books/v1/volumes?q={quote(query)}&maxResults=5"
+                headers = {"User-Agent": "BookCatalog/1.0"}
+                for p in self.providers:
+                    if getattr(p, "api_key", None):
+                        headers["X-Goog-Api-Key"] = p.api_key
+                        break
+                resp = requests.get(url, timeout=5, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for item in data.get("items", []):
+                        img_links = item.get("volumeInfo", {}).get("imageLinks", {})
+                        raw_url = (
+                            img_links.get("extraLarge") or
+                            img_links.get("large") or
+                            img_links.get("medium") or
+                            img_links.get("thumbnail") or
+                            img_links.get("smallThumbnail")
+                        )
+                        if raw_url:
+                            if raw_url.startswith("http://"):
+                                raw_url = "https://" + raw_url[7:]
+                            merged.cover_url = raw_url
+                            merged.source_providers["cover_url"] = "Google Books (Title Search)"
+                            return
+            except Exception as e:
+                LOG.debug(f"Google Books title search for cover failed: {e}")
+
+        # Strategy 3: Search Open Library by title
+        if merged.title:
+            try:
+                ol_url = f"https://openlibrary.org/search.json?q={quote(merged.title)}&limit=5&fields=title,cover_i,cover_edition_key"
+                resp = requests.get(ol_url, timeout=5, headers={"User-Agent": "BookCatalog/1.0"})
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for doc in data.get("docs", []):
+                        if doc.get("cover_i"):
+                            merged.cover_url = f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-L.jpg"
+                            merged.source_providers["cover_url"] = "Open Library (Title Search)"
+                            return
+                        if doc.get("cover_edition_key"):
+                            merged.cover_url = f"https://covers.openlibrary.org/b/olid/{doc['cover_edition_key']}-L.jpg"
+                            merged.source_providers["cover_url"] = "Open Library (Title Search)"
+                            return
+            except Exception as e:
+                LOG.debug(f"Open Library title search for cover failed: {e}")
+

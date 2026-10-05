@@ -86,17 +86,26 @@ class GoogleBooksProvider(BookMetadataProvider):
             if "description" in book_data:
                 metadata.description = book_data["description"]
 
-            # Extract cover image
-            if "imageLinks" in book_data:
-                image_links = book_data["imageLinks"]
-                # Prefer larger images
-                metadata.cover_url = (
-                    image_links.get("extraLarge") or
-                    image_links.get("large") or
-                    image_links.get("medium") or
-                    image_links.get("thumbnail") or
-                    image_links.get("smallThumbnail")
-                )
+            # Extract cover image (check first item, fallback to subsequent items if missing)
+            cover_url = None
+            for item in data.get("items", []):
+                item_vol = item.get("volumeInfo", {})
+                if "imageLinks" in item_vol:
+                    img_links = item_vol["imageLinks"]
+                    raw_url = (
+                        img_links.get("extraLarge") or
+                        img_links.get("large") or
+                        img_links.get("medium") or
+                        img_links.get("thumbnail") or
+                        img_links.get("smallThumbnail")
+                    )
+                    if raw_url:
+                        if raw_url.startswith("http://"):
+                            raw_url = "https://" + raw_url[7:]
+                        cover_url = raw_url
+                        break
+
+            metadata.cover_url = cover_url
 
             # Extract ISBN from identifiers
             if "industryIdentifiers" in book_data:
@@ -178,12 +187,17 @@ class GoogleBooksProvider(BookMetadataProvider):
                 cover_url = None
                 if "imageLinks" in book_data:
                     image_links = book_data["imageLinks"]
-                    cover_url = (
+                    raw_url = (
                         image_links.get("extraLarge") or
                         image_links.get("large") or
                         image_links.get("medium") or
-                        image_links.get("thumbnail")
+                        image_links.get("thumbnail") or
+                        image_links.get("smallThumbnail")
                     )
+                    if raw_url:
+                        if raw_url.startswith("http://"):
+                            raw_url = "https://" + raw_url[7:]
+                        cover_url = raw_url
 
                 # Build source URL
                 source_url = None

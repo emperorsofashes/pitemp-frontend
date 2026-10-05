@@ -22,7 +22,7 @@ from application.constants.app_constants import (
     DISKS_DATABASE_CONFIG_KEY,
     BIRDS_DATABASE_CONFIG_KEY,
     BOOKS_DATABASE_CONFIG_KEY,
-    R2_STORAGE_CONFIG_KEY,
+    R2_CLIENT_CONFIG_KEY,
     MAX_COVER_IMAGE_SIZE_BYTES,
     SESSION_LIFETIME_DAYS,
 )
@@ -132,10 +132,10 @@ def create_flask_app() -> Flask:
             bucket_name=r2_bucket_name,
             public_url=r2_public_url,
         )
-        app.config[R2_STORAGE_CONFIG_KEY] = r2_storage
+        app.config[R2_CLIENT_CONFIG_KEY] = r2_storage
         LOG.info("Cloudflare R2 storage initialized successfully")
     else:
-        app.config[R2_STORAGE_CONFIG_KEY] = None
+        app.config[R2_CLIENT_CONFIG_KEY] = None
         LOG.info("Cloudflare R2 storage credentials not set in environment")
 
     # Configure secure session settings for production (HTTPS)
@@ -153,7 +153,7 @@ def create_flask_app() -> Flask:
     def cover_url_filter(cover_key: str | None) -> str:
         if not cover_key:
             return ""
-        storage: R2Storage | None = app.config.get(R2_STORAGE_CONFIG_KEY)
+        storage: R2Storage | None = app.config.get(R2_CLIENT_CONFIG_KEY)
         if storage and storage.public_url:
             return storage.get_public_url(cover_key)
         r2_url = os.environ.get("BOOK_IMAGE_HOST") or os.environ.get("R2_PUBLIC_URL", "")

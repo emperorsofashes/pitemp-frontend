@@ -78,6 +78,21 @@ class OpenLibraryProvider(BookMetadataProvider):
                 if isinstance(cover_data, dict):
                     metadata.cover_url = cover_data.get("large") or cover_data.get("medium") or cover_data.get("small")
 
+            # Fallback: check Open Library Covers API directly if not in data
+            if not metadata.cover_url and isbn_clean:
+                try:
+                    cover_check_url = f"https://covers.openlibrary.org/b/isbn/{isbn_clean}-L.jpg?default=false"
+                    cover_resp = requests.head(
+                        cover_check_url,
+                        timeout=min(self.timeout, 5),
+                        allow_redirects=True,
+                        headers={"User-Agent": "BookCatalog/1.0"}
+                    )
+                    if cover_resp.status_code == 200:
+                        metadata.cover_url = f"https://covers.openlibrary.org/b/isbn/{isbn_clean}-L.jpg"
+                except Exception as ce:
+                    LOG.debug(f"Direct Open Library cover check failed for {isbn_clean}: {ce}")
+
             # Extract ISBN
             metadata.isbn = isbn_clean
 
@@ -98,7 +113,7 @@ class OpenLibraryProvider(BookMetadataProvider):
         """Search for books by keyword using Open Library Search API."""
         try:
             # Use Open Library Search API
-            url = f"https://openlibrary.org/search.json?q={quote(query)}&limit={max_results}&fields=title,author_name,publisher,first_publish_year,number_of_pages,isbn,cover_i,key"
+            url = f"https://openlibrary.org/search.json?q={quote(query)}&limit={max_results}&fields=title,author_name,publisher,first_publish_year,number_of_pages,isbn,cover_i,cover_edition_key,key"
             resp = requests.get(url, timeout=self.timeout, headers={"User-Agent": "BookCatalog/1.0"})
 
             if resp.status_code != 200:
@@ -132,10 +147,12 @@ class OpenLibraryProvider(BookMetadataProvider):
                     except (ValueError, TypeError):
                         pass
 
-                # Build cover URL
+                # Build cover URL (check cover_i, then cover_edition_key)
                 cover_url = None
-                if "cover_i" in doc:
+                if "cover_i" in doc and doc["cover_i"]:
                     cover_url = f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-L.jpg"
+                elif "cover_edition_key" in doc and doc["cover_edition_key"]:
+                    cover_url = f"https://covers.openlibrary.org/b/olid/{doc['cover_edition_key']}-L.jpg"
 
                 # Build source URL
                 source_url = None

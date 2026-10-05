@@ -42,20 +42,26 @@ class LibraryOfCongressProvider(BookMetadataProvider):
             # Parse XML response
             root = ET.fromstring(resp.text)
 
-            # Define namespace
-            ns = {
+            # Define namespaces (SRU standard uses http, check both http and https)
+            ns_http = {
+                "srw": "http://www.loc.gov/zing/srw/",
+                "dc": "http://purl.org/dc/elements/1.1/",
+                "oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
+            }
+            ns_https = {
                 "srw": "https://www.loc.gov/zing/srw/",
                 "dc": "https://purl.org/dc/elements/1.1/",
                 "oai_dc": "https://www.openarchives.org/OAI/2.0/oai_dc/",
             }
 
             # Check if records were found
-            records = root.findall(".//srw:recordData/oai_dc:dc/dc:dc", ns)
+            records = root.findall(".//srw:recordData/oai_dc:dc/dc:dc", ns_http) or root.findall(".//srw:recordData/dc:dc", ns_http)
+            ns = ns_http
             if not records:
-                # Try alternative namespace path
-                records = root.findall(".//srw:recordData/dc:dc", ns)
-                if not records:
-                    return None
+                records = root.findall(".//srw:recordData/oai_dc:dc/dc:dc", ns_https) or root.findall(".//srw:recordData/dc:dc", ns_https)
+                ns = ns_https
+            if not records:
+                return None
 
             record = records[0]
             metadata = BookMetadata()
@@ -144,20 +150,26 @@ class LibraryOfCongressProvider(BookMetadataProvider):
             # Parse XML response
             root = ET.fromstring(resp.text)
 
-            # Define namespace
-            ns = {
+            # Define namespaces (SRU standard uses http, check both http and https)
+            ns_http = {
+                "srw": "http://www.loc.gov/zing/srw/",
+                "dc": "http://purl.org/dc/elements/1.1/",
+                "oai_dc": "http://www.openarchives.org/OAI/2.0/oai_dc/",
+            }
+            ns_https = {
                 "srw": "https://www.loc.gov/zing/srw/",
                 "dc": "https://purl.org/dc/elements/1.1/",
                 "oai_dc": "https://www.openarchives.org/OAI/2.0/oai_dc/",
             }
 
             # Check if records were found
-            records = root.findall(".//srw:recordData/oai_dc:dc/dc:dc", ns)
+            records = root.findall(".//srw:recordData/oai_dc:dc/dc:dc", ns_http) or root.findall(".//srw:recordData/dc:dc", ns_http)
+            ns = ns_http
             if not records:
-                # Try alternative namespace path
-                records = root.findall(".//srw:recordData/dc:dc", ns)
-                if not records:
-                    return []
+                records = root.findall(".//srw:recordData/oai_dc:dc/dc:dc", ns_https) or root.findall(".//srw:recordData/dc:dc", ns_https)
+                ns = ns_https
+            if not records:
+                return []
 
             results = []
 

@@ -8,7 +8,7 @@ from PIL import Image
 from application import create_flask_app
 from application.constants.app_constants import (
     BOOKS_DATABASE_CONFIG_KEY,
-    R2_STORAGE_CONFIG_KEY,
+    R2_CLIENT_CONFIG_KEY,
 )
 from application.data.book.book import Book
 from application.data.book.image_processor import (
@@ -283,7 +283,7 @@ def app(mock_storage):
     ), patch("application.MongoClient", return_value=mock_mongo_client), patch("application.valkey.Valkey"):
         app = create_flask_app()
         app.config["TESTING"] = True
-        app.config[R2_STORAGE_CONFIG_KEY] = mock_storage
+        app.config[R2_CLIENT_CONFIG_KEY] = mock_storage
 
         # Mock BookDao
         mock_book_dao = Mock()
