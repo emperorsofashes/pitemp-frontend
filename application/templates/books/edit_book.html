@@ -157,13 +157,119 @@ function unhighlight(e) {
 // Handle dropped files
 dropZone.addEventListener('drop', handleDrop, false);
 
-function handleDrop(e) {
+async function handleDrop(e) {
     const dt = e.dataTransfer;
     const files = dt.files;
 
+    console.log('Drop event - files:', files.length);
+    console.log('Drop event - items:', dt.items ? dt.items.length : 0);
+
+    // Log all items for debugging
+    if (dt.items) {
+        for (let i = 0; i < dt.items.length; i++) {
+            const item = dt.items[i];
+            console.log('Item:', i, 'kind:', item.kind, 'type:', item.type);
+        }
+    }
+
+    // Log URL data types
+    const uriList = dt.getData('text/uri-list');
+    const htmlData = dt.getData('text/html');
+    console.log('text/uri-list:', uriList);
+    console.log('text/html:', htmlData);
+
+    // Case 1: Files from File Explorer or file-based drag
     if (files.length > 0) {
+        console.log('Using files from dt.files');
         fileInput.files = files;
         uploadForm.submit();
+        return;
+    }
+
+    // Case 2: File items (some browsers provide this way)
+    if (dt.items) {
+        for (let i = 0; i < dt.items.length; i++) {
+            const item = dt.items[i];
+            if (item.kind === 'file' && item.type.indexOf('image') !== -1) {
+                const file = item.getAsFile();
+                console.log('Got file from item:', file);
+                if (file) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    uploadForm.submit();
+                    return;
+                }
+            }
+        }
+    }
+
+    // Case 3: URL from browser tab (text/uri-list or text/html)
+    let imageUrl = null;
+
+    // Try text/uri-list first
+    if (uriList) {
+        const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#'));
+        if (urls.length > 0) {
+            imageUrl = urls[0].trim();
+            console.log('Extracted URL from text/uri-list:', imageUrl);
+        }
+    }
+
+    // Fallback to text/html (extract img src)
+    if (!imageUrl && htmlData) {
+        const imgMatch = htmlData.match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (imgMatch && imgMatch[1]) {
+            imageUrl = imgMatch[1];
+            console.log('Extracted URL from text/html:', imageUrl);
+        }
+    }
+
+    if (imageUrl) {
+        console.log('Posting URL to server for import:', imageUrl);
+
+        // Show loading indication
+        const uploadBtn = document.getElementById('upload-btn');
+        const originalBtnText = uploadBtn ? uploadBtn.textContent : '';
+        if (uploadBtn) {
+            uploadBtn.textContent = 'Importing...';
+            uploadBtn.disabled = true;
+        }
+
+        // Get CSRF token from the form
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        const bookId = '{{ book.id }}';
+
+        try {
+            const response = await fetch(`/books/${bookId}/cover-from-url`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ url: imageUrl })
+            });
+
+            if (response.ok) {
+                // Reload page to show new cover
+                window.location.reload();
+            } else {
+                const errorText = await response.text();
+                console.error('Server error:', errorText);
+                alert('Failed to import cover image. The server may have rejected the URL or the image could not be downloaded.');
+            }
+        } catch (error) {
+            console.error('Network error:', error);
+            alert('Failed to import cover image. Please check your connection and try again.');
+        } finally {
+            // Restore button
+            if (uploadBtn) {
+                uploadBtn.textContent = originalBtnText;
+                uploadBtn.disabled = false;
+            }
+        }
+    } else {
+        console.log('No usable image URL found in drag data');
     }
 }
 

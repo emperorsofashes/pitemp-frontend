@@ -1,8 +1,8 @@
 import logging
-import re
 import secrets
 from datetime import datetime
-from urllib.parse import urlparse
+from io import BytesIO
+from urllib.parse import urljoin, urlparse
 
 import requests
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
@@ -22,7 +22,6 @@ from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.book.dao import BookDao
 from application.data.book.image_processor import ImageValidationError, process_book_cover
-from application.data.storage.r2_storage import R2Storage, derive_thumb_key
 from application.data.book.providers import (
     BookSearchMerger,
     GoogleBooksProvider,
@@ -30,11 +29,24 @@ from application.data.book.providers import (
     MetadataMerger,
     OpenLibraryProvider,
 )
+from application.data.storage.r2_storage import R2Storage
+from application.data.storage.ssrf_protection import (
+    MAX_REMOTE_IMAGE_SIZE,
+    REQUEST_TIMEOUT,
+    SSRFValidationError,
+    validate_url_for_ssrf,
+    validate_redirect_url,
+)
 from application.data.temperature.dao import ApplicationDao
 
 LOG = logging.getLogger(__name__)
 HTML_BLUEPRINT = Blueprint("routes_html", __name__)
 DEFAULT_DAYS_BACK = 7
+
+
+class RemoteImageDownloadError(Exception):
+    """Raised when remote image download fails."""
+    pass
 
 
 @HTML_BLUEPRINT.route("/")
@@ -721,70 +733,102 @@ def books_upload_cover(book_id):
         flash("No image file was selected.", "danger")
         return redirect(f"/books/edit/{book_id}")
 
-    # Validate and process image
+    # Read file bytes
     try:
         file_bytes = file.read()
         if not file_bytes:
             flash("The uploaded file is empty.", "danger")
             return redirect(f"/books/edit/{book_id}")
+    except Exception as e:
+        LOG.error(f"Error reading uploaded file for book {book_id}: {e}")
+        flash("Failed to read uploaded file.", "danger")
+        return redirect(f"/books/edit/{book_id}")
 
-        full_bytes, thumb_bytes = process_book_cover(file_bytes)
+    # Process and upload using shared helper
+    try:
+        _process_and_upload_cover(book_id, file_bytes, book_dao, r2_storage)
     except ImageValidationError as e:
         LOG.warning(f"Image validation failed for book {book_id}: {e}")
         flash(str(e), "danger")
         return redirect(f"/books/edit/{book_id}")
-    except Exception as e:
-        LOG.error(f"Unexpected error validating image for book {book_id}: {e}")
-        flash("Failed to process cover image.", "danger")
+    except RuntimeError as e:
+        LOG.error(f"Cover upload failed for book {book_id}: {e}")
+        flash(str(e), "danger")
         return redirect(f"/books/edit/{book_id}")
-
-    new_cover_key = f"covers/{book_id}.avif"
-    new_thumb_key = f"covers/{book_id}_thumb.avif"
-    old_cover_key = book.cover_key
-
-    # Upload to R2 with rollback on failure
-    uploaded_keys = []
-    try:
-        r2_storage.upload_file(new_cover_key, full_bytes, content_type="image/avif")
-        uploaded_keys.append(new_cover_key)
-
-        r2_storage.upload_file(new_thumb_key, thumb_bytes, content_type="image/avif")
-        uploaded_keys.append(new_thumb_key)
     except Exception as e:
-        LOG.error(f"Failed to upload images to R2 for book {book_id}: {e}")
-        # Partial upload cleanup where practical
-        for key in uploaded_keys:
-            try:
-                r2_storage.delete_file(key)
-            except Exception as cleanup_err:
-                LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
-        flash("Failed to upload cover images to Cloudflare R2.", "danger")
+        LOG.error(f"Unexpected error uploading cover for book {book_id}: {e}")
+        flash("Failed to upload cover image.", "danger")
         return redirect(f"/books/edit/{book_id}")
-
-    # Update MongoDB
-    try:
-        updated = book_dao.set_cover_key(book_id, new_cover_key)
-        if not updated:
-            raise RuntimeError(f"Could not update cover_key in MongoDB for book {book_id}")
-    except Exception as e:
-        LOG.error(f"MongoDB update failed for book {book_id} after R2 upload: {e}")
-        # Roll back uploaded R2 objects
-        for key in uploaded_keys:
-            try:
-                r2_storage.delete_file(key)
-            except Exception as cleanup_err:
-                LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
-        flash("Failed to update book cover in database.", "danger")
-        return redirect(f"/books/edit/{book_id}")
-
-    # Only after the new cover is successfully stored and referenced should the old objects be deleted
-    if old_cover_key and old_cover_key != new_cover_key:
-        try:
-            r2_storage.delete_cover_and_thumb(old_cover_key)
-        except Exception as e:
-            LOG.warning(f"Failed to delete previous cover objects for book {book_id}: {e}")
 
     flash("Cover image uploaded successfully.", "success")
+    return redirect(f"/books/edit/{book_id}")
+
+
+@HTML_BLUEPRINT.route("/books/<book_id>/cover-from-url", methods=["POST"])
+def books_upload_cover_from_url(book_id):
+    """Upload a book cover by fetching it from a URL (for drag-from-browser-tab)."""
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        flash("Database is not configured.", "danger")
+        return redirect("/books")
+
+    book = book_dao.get_book(book_id)
+    if book is None:
+        flash("Book not found.", "danger")
+        return redirect("/books")
+
+    r2_storage = _get_r2_storage()
+    if r2_storage is None:
+        LOG.error("Cloudflare R2 storage is not configured.")
+        flash("Cloudflare R2 storage is not configured.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Get URL from request
+    if request.is_json:
+        data = request.get_json()
+        url = data.get("url") if data else None
+    else:
+        url = request.form.get("url")
+
+    if not url:
+        flash("No URL provided.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Download remote image with SSRF protection
+    try:
+        image_bytes = download_remote_image(url)
+    except RemoteImageDownloadError as e:
+        LOG.warning("Remote image download failed for book %s: %s", book_id, e)
+        flash("Failed to download image from the provided URL.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+    except SSRFValidationError as e:
+        LOG.warning("SSRF validation failed for remote cover URL for book %s: %s", book_id, e)
+        flash("Invalid or restricted URL.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Process and upload using shared helper
+    try:
+        _process_and_upload_cover(book_id, image_bytes, book_dao, r2_storage)
+    except ImageValidationError as e:
+        LOG.warning("Image validation failed for book %s from URL: %s", book_id, e)
+        flash(str(e), "danger")
+        return redirect(f"/books/edit/{book_id}")
+    except RuntimeError as e:
+        LOG.error("Cover upload from URL failed for book %s: %s", book_id, e)
+        flash(str(e), "danger")
+        return redirect(f"/books/edit/{book_id}")
+    except Exception as e:
+        LOG.error("Unexpected error uploading cover from URL for book %s: %s", book_id, e)
+        flash("Failed to process cover image from URL.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    flash("Cover image imported successfully.", "success")
     return redirect(f"/books/edit/{book_id}")
 
 
@@ -986,6 +1030,139 @@ def book_search():
         return jsonify({"error": "An error occurred during search"}), 500
 
 
+def download_remote_image(url: str) -> bytes:
+    """
+    Download an image from a remote URL with SSRF protection and size limits.
+    
+    Args:
+        url: The URL to download from
+        
+    Returns:
+        The downloaded image bytes
+        
+    Raises:
+        RemoteImageDownloadError: If download fails for any reason
+        SSRFValidationError: If URL or redirect fails SSRF validation
+    """
+    # Validate initial URL
+    try:
+        validated_url = validate_url_for_ssrf(url)
+    except SSRFValidationError as e:
+        LOG.warning("SSRF validation failed for remote cover URL: %s", e)
+        raise
+    
+    response = None
+    try:
+        # Initial request with automatic redirects disabled
+        response = requests.get(
+            validated_url,
+            timeout=REQUEST_TIMEOUT,
+            stream=True,
+            allow_redirects=False,
+        )
+        
+        # Manual redirect handling with validation
+        redirect_count = 0
+        max_redirects = 5
+        current_url = validated_url
+
+        while response.is_redirect and redirect_count < max_redirects:
+            redirect_url = response.headers.get("Location")
+
+            if not redirect_url:
+                raise RemoteImageDownloadError("Redirect without Location header")
+
+            response.close()
+
+            redirect_count += 1
+
+            redirect_url = urljoin(current_url, redirect_url)
+
+            LOG.info("Following remote image redirect %d", redirect_count)
+
+            if not validate_redirect_url(redirect_url):
+                raise SSRFValidationError("Redirect to restricted address blocked")
+
+            response = requests.get(
+                redirect_url,
+                timeout=REQUEST_TIMEOUT,
+                stream=True,
+                allow_redirects=False,
+            )
+            current_url = redirect_url
+            
+            if not redirect_url:
+                raise RemoteImageDownloadError("Redirect without Location header")
+            
+            # Always resolve to absolute URL
+            redirect_url = urljoin(current_url, redirect_url)
+            
+            LOG.info("Following remote image redirect %d", redirect_count)
+            
+            # Validate redirect URL
+            if not validate_redirect_url(redirect_url):
+                raise SSRFValidationError("Redirect to restricted address blocked")
+            
+            # Follow redirect
+            response = requests.get(
+                redirect_url,
+                timeout=REQUEST_TIMEOUT,
+                stream=True,
+                allow_redirects=False,
+            )
+            current_url = redirect_url
+        
+        if redirect_count >= max_redirects:
+            raise RemoteImageDownloadError("Too many redirects")
+        
+        response.raise_for_status()
+        
+        # Optional early Content-Type check
+        content_type = response.headers.get("Content-Type", "").lower()
+        if content_type and not content_type.startswith("image/"):
+            # Only reject obviously non-image types
+            if content_type.startswith(("text/", "application/", "video/", "audio/")):
+                raise RemoteImageDownloadError(f"Remote server returned non-image content type: {content_type}")
+        
+        # Safely parse Content-Length for early rejection
+        content_length = response.headers.get("Content-Length")
+        if content_length:
+            try:
+                content_length_int = int(content_length)
+                if content_length_int > MAX_REMOTE_IMAGE_SIZE:
+                    LOG.warning("Remote image too large (Content-Length: %d bytes)", content_length_int)
+                    raise RemoteImageDownloadError("Remote image is too large (max 10 MB)")
+            except ValueError:
+                # Malformed Content-Length header, ignore and rely on streaming limit
+                LOG.debug("Malformed Content-Length header, ignoring")
+        
+        # Stream download with BytesIO and size limit
+        buffer = BytesIO()
+        
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                buffer.write(chunk)
+            
+            if buffer.tell() > MAX_REMOTE_IMAGE_SIZE:
+                LOG.warning("Remote image exceeded size limit during download")
+                raise RemoteImageDownloadError("Remote image is too large (max 10 MB)")
+        
+        image_bytes = buffer.getvalue()
+        
+        if not image_bytes:
+            raise RemoteImageDownloadError("Remote image is empty")
+        
+        return image_bytes
+        
+    except requests.exceptions.RequestException as e:
+        LOG.error("Failed to download remote image: %s", e)
+        raise RemoteImageDownloadError(f"Failed to download image: {e}")
+    finally:
+        # Ensure response is always closed
+        if response is not None:
+            response.close()
+
+
 def _is_safe_redirect_url(url: str) -> bool:
     if not url:
         return False
@@ -1100,3 +1277,83 @@ def _get_thumbnail_url(cover_key: str | None) -> str | None:
     if r2_storage:
         return r2_storage.get_thumb_url(cover_key)
     return None
+
+
+def _process_and_upload_cover(
+    book_id: str,
+    image_bytes: bytes,
+    book_dao: BookDao,
+    r2_storage: R2Storage,
+) -> bool:
+    """
+    Process image bytes and upload to R2 as cover images.
+    
+    Shared helper for both file upload and URL-based import.
+    
+    Args:
+        book_id: The book ID
+        image_bytes: Raw image bytes
+        book_dao: Book DAO instance
+        r2_storage: R2 storage instance
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    # Process image into AVIF
+    try:
+        full_bytes, thumb_bytes = process_book_cover(image_bytes)
+    except ImageValidationError as e:
+        LOG.warning(f"Image validation failed for book {book_id}: {e}")
+        raise
+    except Exception as e:
+        LOG.error(f"Unexpected error processing image for book {book_id}: {e}")
+        raise RuntimeError(f"Failed to process cover image: {e}")
+
+    new_cover_key = f"covers/{book_id}.avif"
+    new_thumb_key = f"covers/{book_id}_thumb.avif"
+    
+    # Get current book to check for existing cover
+    book = book_dao.get_book(book_id)
+    old_cover_key = book.cover_key if book else None
+
+    # Upload to R2 with rollback on failure
+    uploaded_keys = []
+    try:
+        r2_storage.upload_file(new_cover_key, full_bytes, content_type="image/avif")
+        uploaded_keys.append(new_cover_key)
+
+        r2_storage.upload_file(new_thumb_key, thumb_bytes, content_type="image/avif")
+        uploaded_keys.append(new_thumb_key)
+    except Exception as e:
+        LOG.error(f"Failed to upload images to R2 for book {book_id}: {e}")
+        # Partial upload cleanup
+        for key in uploaded_keys:
+            try:
+                r2_storage.delete_file(key)
+            except Exception as cleanup_err:
+                LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
+        raise RuntimeError("Failed to upload cover images to Cloudflare R2.")
+
+    # Update MongoDB
+    try:
+        updated = book_dao.set_cover_key(book_id, new_cover_key)
+        if not updated:
+            raise RuntimeError(f"Could not update cover_key in MongoDB for book {book_id}")
+    except Exception as e:
+        LOG.error(f"MongoDB update failed for book {book_id} after R2 upload: {e}")
+        # Roll back uploaded R2 objects
+        for key in uploaded_keys:
+            try:
+                r2_storage.delete_file(key)
+            except Exception as cleanup_err:
+                LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
+        raise RuntimeError("Failed to update book cover in database.")
+
+    # Delete old cover after successful upload
+    if old_cover_key and old_cover_key != new_cover_key:
+        try:
+            r2_storage.delete_cover_and_thumb(old_cover_key)
+        except Exception as e:
+            LOG.warning(f"Failed to delete previous cover objects for book {book_id}: {e}")
+
+    return True
