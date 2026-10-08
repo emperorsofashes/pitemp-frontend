@@ -1416,4 +1416,21 @@ def _process_and_upload_cover(
         except Exception as e:
             LOG.warning(f"Failed to delete previous cover objects for book {book_id}: {e}")
 
+    # Purge CDN cache for the newly uploaded images
+    urls_to_purge = []
+    try:
+        cover_url = r2_storage.get_public_url(new_cover_key)
+        thumb_url = r2_storage.get_thumb_url(new_cover_key)
+        if cover_url:
+            urls_to_purge.append(cover_url)
+        if thumb_url:
+            urls_to_purge.append(thumb_url)
+
+        if urls_to_purge:
+            purge_success = r2_storage.purge_cdn_cache(urls_to_purge)
+            if not purge_success:
+                LOG.warning(f"CDN cache purge failed for book {book_id}, but images were uploaded successfully")
+    except Exception as e:
+        LOG.warning(f"Error during CDN cache purge for book {book_id}: {e}")
+
     return True

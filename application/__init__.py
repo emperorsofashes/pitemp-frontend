@@ -25,6 +25,8 @@ from application.constants.app_constants import (
     R2_CLIENT_CONFIG_KEY,
     MAX_COVER_IMAGE_SIZE_BYTES,
     SESSION_LIFETIME_DAYS,
+    CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_ZONE_ID,
 )
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
@@ -123,6 +125,8 @@ def create_flask_app() -> Flask:
     r2_secret_access_key = os.environ.get("R2_SECRET_ACCESS_KEY")
     r2_bucket_name = os.environ.get("R2_BUCKET_NAME")
     r2_public_url = os.environ.get("BOOK_IMAGE_HOST") or os.environ.get("R2_PUBLIC_URL")
+    cf_api_token = os.environ.get(CLOUDFLARE_API_TOKEN)
+    cf_zone_id = os.environ.get(CLOUDFLARE_ZONE_ID)
 
     if r2_account_id and r2_access_key_id and r2_secret_access_key and r2_bucket_name:
         r2_storage = R2Storage(
@@ -131,9 +135,15 @@ def create_flask_app() -> Flask:
             secret_access_key=r2_secret_access_key,
             bucket_name=r2_bucket_name,
             public_url=r2_public_url,
+            cf_api_token=cf_api_token,
+            cf_zone_id=cf_zone_id,
         )
         app.config[R2_CLIENT_CONFIG_KEY] = r2_storage
         LOG.info("Cloudflare R2 storage initialized successfully")
+        if cf_api_token and cf_zone_id:
+            LOG.info("Cloudflare CDN cache purge configured")
+        else:
+            LOG.info("Cloudflare CDN cache purge not configured (missing API token or zone ID)")
     else:
         app.config[R2_CLIENT_CONFIG_KEY] = None
         LOG.info("Cloudflare R2 storage credentials not set in environment")

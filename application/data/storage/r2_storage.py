@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 import boto3
+import requests
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
@@ -27,10 +28,14 @@ class R2Storage:
         bucket_name: str,
         public_url: str | None = None,
         s3_client: Any | None = None,
+        cf_api_token: str | None = None,
+        cf_zone_id: str | None = None,
     ):
         self.account_id = account_id
         self.bucket_name = bucket_name
         self.public_url = public_url.rstrip("/") if public_url else ""
+        self.cf_api_token = cf_api_token
+        self.cf_zone_id = cf_zone_id
 
         if s3_client is not None:
             self.s3_client = s3_client
@@ -104,3 +109,62 @@ class R2Storage:
             return ""
         thumb_key = derive_thumb_key(cover_key)
         return self.get_public_url(thumb_key)
+
+    def purge_cdn_cache(self, urls: list[str]) -> bool:
+        """
+        Purge specific URLs from Cloudflare CDN cache.
+
+        Args:
+            urls: List of complete public URLs to purge from cache
+
+        Returns:
+            True if purge was successful, False otherwise
+        """
+        if not self.cf_api_token or not self.cf_zone_id:
+            LOG.warning("Cloudflare API token or zone ID not configured, skipping CDN cache purge")
+            return False
+
+        if not urls:
+            LOG.warning("No URLs provided for CDN cache purge")
+            return False
+
+        # Filter out empty URLs
+        valid_urls = [url for url in urls if url]
+        if not valid_urls:
+            LOG.warning("No valid URLs provided for CDN cache purge")
+            return False
+
+        endpoint = f"https://api.cloudflare.com/client/v4/zones/{self.cf_zone_id}/purge_cache"
+        headers = {
+            "Authorization": f"Bearer {self.cf_api_token}",
+            "Content-Type": "application/json",
+        }
+        payload = {"files": valid_urls}
+
+        try:
+            response = requests.post(
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=10,
+            )
+            response.raise_for_status()
+
+            result = response.json()
+            if result.get("success"):
+                LOG.info(f"Successfully purged {len(valid_urls)} URL(s) from Cloudflare CDN cache")
+                return True
+            else:
+                errors = result.get("errors", [])
+                LOG.error(f"Cloudflare CDN cache purge failed: {errors}")
+                return False
+
+        except requests.exceptions.Timeout:
+            LOG.error("Cloudflare CDN cache purge request timed out")
+            return False
+        except requests.exceptions.RequestException as e:
+            LOG.error(f"Cloudflare CDN cache purge request failed: {e}")
+            return False
+        except Exception as e:
+            LOG.error(f"Unexpected error during Cloudflare CDN cache purge: {e}")
+            return False

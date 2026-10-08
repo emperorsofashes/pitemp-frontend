@@ -2,6 +2,7 @@ import io
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import requests
 from bson import ObjectId
 from PIL import Image
 
@@ -242,6 +243,142 @@ class TestR2Storage:
         assert mock_s3.delete_object.call_count == 2
         mock_s3.delete_object.assert_any_call(Bucket="test-bucket", Key="covers/123.avif")
         mock_s3.delete_object.assert_any_call(Bucket="test-bucket", Key="covers/123_thumb.avif")
+
+
+class TestCDNCachePurge:
+    def test_purge_cdn_cache_success(self):
+        """Verify successful CDN cache purge with valid configuration."""
+        mock_s3 = Mock()
+        storage = R2Storage(
+            account_id="test-account",
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            bucket_name="test-bucket",
+            public_url="https://pub-test.r2.dev",
+            s3_client=mock_s3,
+            cf_api_token="test-cf-token",
+            cf_zone_id="test-zone-id",
+        )
+
+        urls = ["https://pub-test.r2.dev/covers/123.avif", "https://pub-test.r2.dev/covers/123_thumb.avif"]
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"success": True}
+            mock_post.return_value = mock_response
+
+            result = storage.purge_cdn_cache(urls)
+
+            assert result is True
+            mock_post.assert_called_once()
+            call_args = mock_post.call_args
+            assert call_args[0][0] == "https://api.cloudflare.com/client/v4/zones/test-zone-id/purge_cache"
+            assert call_args[1]["headers"]["Authorization"] == "Bearer test-cf-token"
+            assert call_args[1]["json"]["files"] == urls
+            assert call_args[1]["timeout"] == 10
+
+    def test_purge_cdn_cache_missing_credentials(self):
+        """Verify CDN cache purge is skipped when credentials are missing."""
+        mock_s3 = Mock()
+        storage = R2Storage(
+            account_id="test-account",
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            bucket_name="test-bucket",
+            public_url="https://pub-test.r2.dev",
+            s3_client=mock_s3,
+            cf_api_token=None,
+            cf_zone_id=None,
+        )
+
+        result = storage.purge_cdn_cache(["https://pub-test.r2.dev/covers/123.avif"])
+        assert result is False
+
+    def test_purge_cdn_cache_cloudflare_api_error(self):
+        """Verify CDN cache purge handles Cloudflare API errors correctly."""
+        mock_s3 = Mock()
+        storage = R2Storage(
+            account_id="test-account",
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            bucket_name="test-bucket",
+            public_url="https://pub-test.r2.dev",
+            s3_client=mock_s3,
+            cf_api_token="test-cf-token",
+            cf_zone_id="test-zone-id",
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"success": False, "errors": [{"message": "Invalid token"}]}
+            mock_post.return_value = mock_response
+
+            result = storage.purge_cdn_cache(["https://pub-test.r2.dev/covers/123.avif"])
+            assert result is False
+
+    def test_purge_cdn_cache_timeout(self):
+        """Verify CDN cache purge handles request timeouts."""
+        mock_s3 = Mock()
+        storage = R2Storage(
+            account_id="test-account",
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            bucket_name="test-bucket",
+            public_url="https://pub-test.r2.dev",
+            s3_client=mock_s3,
+            cf_api_token="test-cf-token",
+            cf_zone_id="test-zone-id",
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_post.side_effect = requests.exceptions.Timeout()
+
+            result = storage.purge_cdn_cache(["https://pub-test.r2.dev/covers/123.avif"])
+            assert result is False
+
+    def test_purge_cdn_cache_empty_urls(self):
+        """Verify CDN cache purge handles empty URL list."""
+        mock_s3 = Mock()
+        storage = R2Storage(
+            account_id="test-account",
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            bucket_name="test-bucket",
+            public_url="https://pub-test.r2.dev",
+            s3_client=mock_s3,
+            cf_api_token="test-cf-token",
+            cf_zone_id="test-zone-id",
+        )
+
+        result = storage.purge_cdn_cache([])
+        assert result is False
+
+    def test_purge_cdn_cache_filters_empty_urls(self):
+        """Verify CDN cache purge filters out empty strings from URL list."""
+        mock_s3 = Mock()
+        storage = R2Storage(
+            account_id="test-account",
+            access_key_id="test-key",
+            secret_access_key="test-secret",
+            bucket_name="test-bucket",
+            public_url="https://pub-test.r2.dev",
+            s3_client=mock_s3,
+            cf_api_token="test-cf-token",
+            cf_zone_id="test-zone-id",
+        )
+
+        with patch("requests.post") as mock_post:
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"success": True}
+            mock_post.return_value = mock_response
+
+            result = storage.purge_cdn_cache(["", "https://pub-test.r2.dev/covers/123.avif", ""])
+            assert result is True
+            # Only the valid URL should be sent
+            assert mock_post.call_args[1]["json"]["files"] == ["https://pub-test.r2.dev/covers/123.avif"]
 
 
 # ============================================================================

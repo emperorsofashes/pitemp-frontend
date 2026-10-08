@@ -30,6 +30,19 @@ To run this application, you need to set some environment variables:
 * `SECRET_KEY` - Key used to sign session cookies
 * `REDIS_DATA_URL` - The URL for the cache connection
 
+### Cloudflare R2 Storage (Optional)
+For book cover image upload functionality:
+* `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+* `R2_ACCESS_KEY_ID` - R2 access key ID
+* `R2_SECRET_ACCESS_KEY` - R2 secret access key
+* `R2_BUCKET_NAME` - R2 bucket name
+* `BOOK_IMAGE_HOST` or `R2_PUBLIC_URL` - Public URL for R2-hosted images
+
+### Cloudflare CDN Cache Purge (Optional)
+To automatically purge Cloudflare CDN cache after image uploads:
+* `CLOUDFLARE_API_TOKEN` - Cloudflare API token with Cache Purge permission
+* `CLOUDFLARE_ZONE_ID` - Cloudflare zone ID for your domain
+
 ### Local
 
 You can run the application locally by executing the module `application`:
