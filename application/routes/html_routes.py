@@ -613,6 +613,8 @@ def books_add():
         # Parse authors (comma-separated)
         authors = [a.strip() for a in authors_str.split(",") if a.strip()]
 
+        LOG.info(f"Adding new book: {title}")
+
         # Parse date published
         date_published = None
         if date_published_str:
@@ -643,14 +645,21 @@ def books_add():
         r2_storage = _get_r2_storage()
         cover_file = request.files.get("cover_image")
 
+        LOG.info(f"Cover file check: cover_file={cover_file}, r2_storage={r2_storage is not None}")
+        if cover_file:
+            LOG.info(f"Cover file details: filename={cover_file.filename}, content_length={cover_file.content_length}")
+
         # Priority: uploaded file > cover URL from search
-        if cover_file and cover_file.filename:
-            # Process uploaded file
-            if r2_storage:
+        if cover_file:
+            # Process uploaded file (check for filename OR content)
+            if r2_storage and (cover_file.filename or cover_file.content_length):
                 try:
                     file_bytes = cover_file.read()
                     if file_bytes:
+                        LOG.info(f"Processing cover image for new book {book_id}, size: {len(file_bytes)} bytes")
                         _process_and_upload_cover(book_id, file_bytes, book_dao, r2_storage)
+                    else:
+                        LOG.warning(f"Cover file is empty for new book {book_id}")
                 except ImageValidationError as e:
                     LOG.warning(f"Image validation failed for new book {book_id}: {e}")
                     flash(str(e), "danger")
@@ -661,7 +670,10 @@ def books_add():
                     LOG.error(f"Unexpected error uploading cover for new book {book_id}: {e}")
                     flash("Failed to upload cover image.", "danger")
             else:
-                LOG.warning("R2 storage not configured, skipping cover upload")
+                if not r2_storage:
+                    LOG.warning("R2 storage not configured, skipping cover upload")
+                elif not cover_file.filename and not cover_file.content_length:
+                    LOG.warning(f"Cover file has no filename and no content length for new book {book_id}")
         elif cover_url and r2_storage:
             # Download and process cover from URL
             try:

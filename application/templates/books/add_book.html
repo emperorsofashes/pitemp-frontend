@@ -180,31 +180,31 @@
                 </div>
             </div>
 
-            <!-- Cover Image Upload Section -->
-            <div class="card bg-secondary text-white mb-4">
-                <div class="card-body">
-                    <h6 class="card-title mb-3">Cover Image</h6>
-                    
-                    <div id="cover-upload-section" class="form-group mb-2">
-                        <label for="cover_image">Upload Cover Image</label>
-                        <input type="file" id="cover_image" name="cover_image" accept="image/*" class="form-control-file bg-dark text-white border-secondary">
-                        <small class="text-muted">Upload a cover image for the book (optional)</small>
-                    </div>
-                    
-                    <!-- Cover Image Preview -->
-                    <div id="cover-preview-container" class="mt-3" style="display: none;">
-                        <label>Cover Preview</label>
-                        <div class="text-center">
-                            <img id="cover-preview" src="" alt="Cover preview" style="max-width: 200px; max-height: 300px; border-radius: 8px;">
-                        </div>
-                        <button type="button" id="remove-cover-btn" class="btn btn-sm btn-danger mt-2">Remove Cover</button>
-                    </div>
-                </div>
-            </div>
-
             <form action="/books/add" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="cover_url" id="cover_url" value=""/>
+
+                <!-- Cover Image Upload Section -->
+                <div class="card bg-secondary text-white mb-4">
+                    <div class="card-body">
+                        <h6 class="card-title mb-3">Cover Image</h6>
+                        
+                        <div id="cover-upload-section" class="form-group mb-2">
+                            <label for="cover_image">Upload Cover Image</label>
+                            <input type="file" id="cover_image" name="cover_image" accept="image/*" class="form-control-file bg-dark text-white border-secondary">
+                            <small class="text-muted">Upload a cover image for the book (optional), or drag & drop an image, or paste (Ctrl+V)</small>
+                        </div>
+                        
+                        <!-- Cover Image Preview -->
+                        <div id="cover-preview-container" class="mt-3" style="display: none;">
+                            <label>Cover Preview</label>
+                            <div class="text-center">
+                                <img id="cover-preview" src="" alt="Cover preview" style="max-width: 200px; max-height: 300px; border-radius: 8px;">
+                            </div>
+                            <button type="button" id="remove-cover-btn" class="btn btn-sm btn-danger mt-2">Remove Cover</button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="form-group">
                     <label for="title">Title *</label>
@@ -832,9 +832,14 @@ const coverPreview = document.getElementById('cover-preview');
 const removeCoverBtn = document.getElementById('remove-cover-btn');
 const coverUploadSection = document.getElementById('cover-upload-section');
 
-coverImageInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
+function handleImageFile(file) {
+    if (file && file.type.startsWith('image/')) {
+        // Ensure the file has a filename (pasted/dragged files might not)
+        if (!file.name || file.name === '') {
+            const extension = file.type.split('/')[1] || 'png';
+            file = new File([file], `cover.${extension}`, { type: file.type });
+        }
+
         const reader = new FileReader();
         reader.onload = function(e) {
             coverPreview.src = e.target.result;
@@ -844,7 +849,19 @@ coverImageInput.addEventListener('change', function(e) {
             document.getElementById('cover_url').value = '';
         };
         reader.readAsDataURL(file);
+
+        // Set the file in the file input for form submission using DataTransfer
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        coverImageInput.files = dataTransfer.files;
+
+        console.log('File set in input:', file.name, file.size, file.type);
     }
+}
+
+coverImageInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    handleImageFile(file);
 });
 
 removeCoverBtn.addEventListener('click', function() {
@@ -854,6 +871,55 @@ removeCoverBtn.addEventListener('click', function() {
     coverUploadSection.style.display = 'block';
     // Clear the cover URL field as well
     document.getElementById('cover_url').value = '';
+});
+
+// Diagnostic logging before form submission
+document.querySelector('form[action="/books/add"]').addEventListener('submit', function(e) {
+    const coverFile = coverImageInput.files[0];
+    if (coverFile) {
+        console.log('Form submission - Cover file selected:', coverFile.name, 'Size:', coverFile.size, 'Type:', coverFile.type);
+    } else {
+        console.log('Form submission - No cover file selected');
+    }
+});
+
+// Drag and drop support
+const coverCard = coverUploadSection.closest('.card');
+
+coverCard.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    coverCard.style.borderColor = '#00ff00';
+});
+
+coverCard.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    coverCard.style.borderColor = '';
+});
+
+coverCard.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    coverCard.style.borderColor = '';
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        handleImageFile(files[0]);
+    }
+});
+
+// Paste support (Ctrl+V)
+document.addEventListener('paste', function(e) {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            handleImageFile(blob);
+            e.preventDefault();
+            break;
+        }
+    }
 });
 </script>
 {% endblock %}
