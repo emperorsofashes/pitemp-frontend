@@ -610,8 +610,10 @@ def books_add():
         page_count_str = request.form.get("page_count")
         cover_url = request.form.get("cover_url")
 
-        # Parse authors (comma-separated)
-        authors = [a.strip() for a in authors_str.split(",") if a.strip()]
+        # Parse authors (comma-separated) - optional field
+        authors = []
+        if authors_str:
+            authors = [a.strip() for a in authors_str.split(",") if a.strip()]
 
         LOG.info(f"Adding new book: {title}")
 
@@ -712,8 +714,10 @@ def books_edit_book(book_id):
         oclc_number = request.form.get("oclc_number")
         page_count_str = request.form.get("page_count")
 
-        # Parse authors (comma-separated)
-        authors = [a.strip() for a in authors_str.split(",") if a.strip()]
+        # Parse authors (comma-separated) - optional field
+        authors = []
+        if authors_str:
+            authors = [a.strip() for a in authors_str.split(",") if a.strip()]
 
         # Parse date published
         date_published = None

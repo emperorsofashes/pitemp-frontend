@@ -87,7 +87,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
         <div class="me-3">
             <h1 class="mb-0">{{ book.title }}</h1>
-            <p class="text-muted mb-0">{{ book.authors|join(', ') }}</p>
+            <p class="text-muted mb-0">{{ book.authors|join(', ') if book.authors else '—' }}</p>
         </div>
         <div>
             <a href="/books" class="btn btn-secondary mr-2 my-1">Back to Collection</a>
@@ -132,7 +132,7 @@
                         </tr>
                         <tr>
                             <th scope="row">Author(s)</th>
-                            <td>{{ book.authors|join(', ') }}</td>
+                            <td>{{ book.authors|join(', ') if book.authors else '—' }}</td>
                         </tr>
                         <tr>
                             <th scope="row">Date Published</th>

@@ -73,10 +73,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="authors">Author(s) *</label>
+                    <label for="authors">Author(s)</label>
                     <input type="text" name="authors" id="authors" class="form-control bg-dark text-white border-secondary" 
-                           value="{{ book.authors|join(', ') }}" placeholder="Separate multiple authors with commas" required>
-                    <small class="text-muted">Separate multiple authors with commas (e.g., "Jane Doe, John Smith")</small>
+                           value="{{ book.authors|join(', ') if book.authors else '' }}" placeholder="Separate multiple authors with commas">
+                    <small class="text-muted">Separate multiple authors with commas (e.g., "Jane Doe, John Smith") - optional</small>
                 </div>
 
                 <div class="form-group">

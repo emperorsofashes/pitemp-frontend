@@ -9,7 +9,7 @@ from application.constants.book_constants import BOOK_IMAGE_HOST
 class Book:
     id: str
     title: str
-    authors: list[str]
+    authors: list[str] | None = None
     date_published: datetime | None = None
     isbn: str | None = None
     oclc_number: str | None = None
