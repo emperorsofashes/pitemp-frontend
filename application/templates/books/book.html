@@ -2,6 +2,84 @@
 
 {% block header %}
     <title>{{ book.title }}</title>
+    <style>
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            overflow: hidden;
+        }
+
+        .image-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 90%;
+            max-height: 90%;
+            cursor: grab;
+            transition: transform 0.1s ease;
+        }
+
+        .image-modal-content:active {
+            cursor: grabbing;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10000;
+            user-select: none;
+        }
+
+        .modal-close:hover {
+            color: #00bcd4;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10000;
+        }
+
+        .zoom-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+
+        .zoom-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .clickable-image {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .clickable-image:hover {
+            transform: scale(1.02);
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -32,7 +110,7 @@
         <!-- Book Cover Column -->
         <div class="col-md-4 mb-4 text-center">
             <div class="card bg-dark text-white p-2">
-                <img src="{{ book.cover_key | cover_url }}" alt="{{ book.title }} Cover" class="img-fluid rounded shadow" style="max-height: 500px; object-fit: contain;">
+                <img src="{{ book.cover_key | cover_url }}" alt="{{ book.title }} Cover" class="img-fluid rounded shadow clickable-image" style="max-height: 500px; object-fit: contain;" onclick="openModal('{{ book.cover_key | cover_url }}')">
             </div>
         </div>
         <!-- Book Details Column -->
@@ -106,4 +184,111 @@
         </div>
     </div>
 </div>
+
+<!-- Image Modal -->
+<div id="imageModal" class="image-modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <img class="image-modal-content" id="modalImage" src="" alt="Full size cover">
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomOut()">-</button>
+        <button class="zoom-btn" onclick="resetZoom()">Reset</button>
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+    </div>
+</div>
+
+<script>
+    let currentScale = 1;
+    let translateX = 0;
+    let translateY = 0;
+    let isDragging = false;
+    let startX, startY;
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+
+    function openModal(imageSrc) {
+        modal.style.display = 'block';
+        modalImg.src = imageSrc;
+        currentScale = 1;
+        translateX = 0;
+        translateY = 0;
+        updateTransform();
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function updateTransform() {
+        modalImg.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${currentScale})`;
+    }
+
+    function zoomIn() {
+        currentScale += 0.25;
+        updateTransform();
+    }
+
+    function zoomOut() {
+        if (currentScale > 0.5) {
+            currentScale -= 0.25;
+            updateTransform();
+        }
+    }
+
+    function resetZoom() {
+        currentScale = 1;
+        translateX = 0;
+        translateY = 0;
+        updateTransform();
+    }
+
+    // Panning functionality
+    modalImg.addEventListener('mousedown', function(e) {
+        if (currentScale > 1) {
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('mousemove', function(e) {
+        if (isDragging) {
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            updateTransform();
+        }
+    });
+
+    document.addEventListener('mouseup', function() {
+        isDragging = false;
+    });
+
+    // Close modal when clicking outside the image
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
+            closeModal();
+        }
+    });
+
+    // Mouse wheel zoom
+    modal.addEventListener('wheel', function(e) {
+        if (modal.style.display === 'block') {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        }
+    });
+</script>
 {% endblock %}
