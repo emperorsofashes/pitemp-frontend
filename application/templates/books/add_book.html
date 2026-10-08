@@ -147,13 +147,15 @@
                                 <input type="text" id="isbn_lookup" class="form-control bg-dark text-white border-secondary"
                                        placeholder="ISBN-10 or ISBN-13">
                                 <div class="input-group-append">
-                                    <button type="button" id="scan-barcode-btn" class="btn btn-info" title="Scan ISBN barcode">
-                                        📷 Scan
-                                    </button>
                                     <button type="button" id="lookup-btn" class="btn btn-info">Look up</button>
                                 </div>
                             </div>
-                            <small class="text-muted">Enter an ISBN to automatically populate book details from multiple sources, or use the camera to scan a barcode</small>
+                            <small class="text-muted">Enter an ISBN to automatically populate book details from multiple sources</small>
+                        </div>
+                        <div class="form-group mb-2">
+                            <button type="button" id="scan-barcode-btn" class="btn btn-info w-100" title="Scan ISBN barcode">
+                                📷 Scan ISBN Barcode
+                            </button>
                         </div>
                         <div id="lookup-status" class="mt-2"></div>
                         <div id="provider-status"></div>
@@ -178,8 +180,31 @@
                 </div>
             </div>
 
-            <form action="/books/add" method="POST">
+            <!-- Cover Image Upload Section -->
+            <div class="card bg-secondary text-white mb-4">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">Cover Image</h6>
+                    
+                    <div id="cover-upload-section" class="form-group mb-2">
+                        <label for="cover_image">Upload Cover Image</label>
+                        <input type="file" id="cover_image" name="cover_image" accept="image/*" class="form-control-file bg-dark text-white border-secondary">
+                        <small class="text-muted">Upload a cover image for the book (optional)</small>
+                    </div>
+                    
+                    <!-- Cover Image Preview -->
+                    <div id="cover-preview-container" class="mt-3" style="display: none;">
+                        <label>Cover Preview</label>
+                        <div class="text-center">
+                            <img id="cover-preview" src="" alt="Cover preview" style="max-width: 200px; max-height: 300px; border-radius: 8px;">
+                        </div>
+                        <button type="button" id="remove-cover-btn" class="btn btn-sm btn-danger mt-2">Remove Cover</button>
+                    </div>
+                </div>
+            </div>
+
+            <form action="/books/add" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="cover_url" id="cover_url" value=""/>
 
                 <div class="form-group">
                     <label for="title">Title *</label>
@@ -450,15 +475,23 @@ function displaySearchResults(results, providerStatus) {
         const isbn = result.isbn_13 || result.isbn_10;
         const authors = result.authors && result.authors.length > 0 ? result.authors.join(', ') : 'Unknown';
         const year = result.publication_year || result.publication_date ? result.publication_year : '';
+        const coverUrl = result.cover_url || '';
         
         html += `
             <button type="button" class="list-group-item list-group-item-action bg-secondary text-white" onclick="selectSearchResult(${JSON.stringify(result).replace(/"/g, '&quot;')})">
-                <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">${escapeHtml(result.title)}</h6>
-                    <small class="text-muted">${result.provider}</small>
+                <div class="d-flex w-100">
+                    <div class="mr-3" style="min-width: 60px;">
+                        ${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="Cover" style="max-width: 60px; max-height: 90px; border-radius: 4px;">` : '<div style="width: 60px; height: 90px; background: #444; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 24px;">📖</div>'}
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${escapeHtml(result.title)}</h6>
+                            <small class="text-muted">${result.provider}</small>
+                        </div>
+                        <p class="mb-1 small">${escapeHtml(authors)}</p>
+                        <small class="text-muted">${year ? year + ' • ' : ''}${result.publisher ? escapeHtml(result.publisher) : ''}${isbn ? ' • ISBN: ' + isbn : ''}</small>
+                    </div>
                 </div>
-                <p class="mb-1 small">${escapeHtml(authors)}</p>
-                <small class="text-muted">${year ? year + ' • ' : ''}${result.publisher ? escapeHtml(result.publisher) : ''}${isbn ? ' • ISBN: ' + isbn : ''}</small>
             </button>
         `;
     }
@@ -477,6 +510,15 @@ function selectSearchResult(result) {
     };
     
     populateForm(metadata);
+    
+    // Display cover image preview if available from search
+    if (result.cover_url) {
+        coverPreview.src = result.cover_url;
+        coverPreviewContainer.style.display = 'block';
+        coverUploadSection.style.display = 'none';
+        // Store the cover URL in hidden field for form submission
+        document.getElementById('cover_url').value = result.cover_url;
+    }
     
     // Switch to ISBN mode to show the populated form
     setSearchMode('isbn');
@@ -516,6 +558,15 @@ function populateForm(data) {
     // Populate ISBN field in the form
     if (data.isbn) {
         document.getElementById('isbn').value = data.isbn;
+    }
+
+    // Display cover image preview if available
+    if (data.cover_url) {
+        coverPreview.src = data.cover_url;
+        coverPreviewContainer.style.display = 'block';
+        coverUploadSection.style.display = 'none';
+        // Store the cover URL in hidden field for form submission
+        document.getElementById('cover_url').value = data.cover_url;
     }
 
     // Display provider status
@@ -772,6 +823,37 @@ document.addEventListener('visibilitychange', function() {
         stopScanner();
         scannerModal.classList.remove('active');
     }
+});
+
+// Cover Image Preview Functionality
+const coverImageInput = document.getElementById('cover_image');
+const coverPreviewContainer = document.getElementById('cover-preview-container');
+const coverPreview = document.getElementById('cover-preview');
+const removeCoverBtn = document.getElementById('remove-cover-btn');
+const coverUploadSection = document.getElementById('cover-upload-section');
+
+coverImageInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            coverPreview.src = e.target.result;
+            coverPreviewContainer.style.display = 'block';
+            coverUploadSection.style.display = 'none';
+            // Clear the cover URL field since we're using an uploaded file
+            document.getElementById('cover_url').value = '';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+removeCoverBtn.addEventListener('click', function() {
+    coverImageInput.value = '';
+    coverPreview.src = '';
+    coverPreviewContainer.style.display = 'none';
+    coverUploadSection.style.display = 'block';
+    // Clear the cover URL field as well
+    document.getElementById('cover_url').value = '';
 });
 </script>
 {% endblock %}

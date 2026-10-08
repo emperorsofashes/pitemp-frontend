@@ -608,6 +608,7 @@ def books_add():
         isbn = request.form.get("isbn")
         oclc_number = request.form.get("oclc_number")
         page_count_str = request.form.get("page_count")
+        cover_url = request.form.get("cover_url")
 
         # Parse authors (comma-separated)
         authors = [a.strip() for a in authors_str.split(",") if a.strip()]
@@ -628,7 +629,8 @@ def books_add():
             except ValueError:
                 pass
 
-        book_dao.add_book(
+        # Add the book first
+        book_id = book_dao.add_book(
             title=title,
             authors=authors,
             date_published=date_published,
@@ -636,6 +638,42 @@ def books_add():
             oclc_number=oclc_number,
             page_count=page_count,
         )
+
+        # Handle cover image upload
+        r2_storage = _get_r2_storage()
+        cover_file = request.files.get("cover_image")
+
+        # Priority: uploaded file > cover URL from search
+        if cover_file and cover_file.filename:
+            # Process uploaded file
+            if r2_storage:
+                try:
+                    file_bytes = cover_file.read()
+                    if file_bytes:
+                        _process_and_upload_cover(book_id, file_bytes, book_dao, r2_storage)
+                except ImageValidationError as e:
+                    LOG.warning(f"Image validation failed for new book {book_id}: {e}")
+                    flash(str(e), "danger")
+                except RuntimeError as e:
+                    LOG.error(f"Cover upload failed for new book {book_id}: {e}")
+                    flash(str(e), "danger")
+                except Exception as e:
+                    LOG.error(f"Unexpected error uploading cover for new book {book_id}: {e}")
+                    flash("Failed to upload cover image.", "danger")
+            else:
+                LOG.warning("R2 storage not configured, skipping cover upload")
+        elif cover_url and r2_storage:
+            # Download and process cover from URL
+            try:
+                image_bytes = download_remote_image(cover_url)
+                _process_and_upload_cover(book_id, image_bytes, book_dao, r2_storage)
+            except (RemoteImageDownloadError, SSRFValidationError) as e:
+                LOG.warning(f"Failed to download cover from URL for new book {book_id}: {e}")
+            except (ImageValidationError, RuntimeError) as e:
+                LOG.warning(f"Failed to process cover from URL for new book {book_id}: {e}")
+            except Exception as e:
+                LOG.error(f"Unexpected error processing cover from URL for new book {book_id}: {e}")
+
         return redirect("/books")
 
     # Require login for adding books

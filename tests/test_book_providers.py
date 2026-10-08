@@ -1,15 +1,15 @@
-import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-from application.data.book.providers.base import BookMetadata, BookMetadataProvider, SearchResult
+import pytest
+
+from application.data.book.providers.base import BookMetadata
 from application.data.book.providers.googlebooks import GoogleBooksProvider
 from application.data.book.providers.loc import LibraryOfCongressProvider
 from application.data.book.providers.merger import MetadataMerger
 from application.data.book.providers.ndl import NDLSearchProvider
 from application.data.book.providers.openbd import OpenBDProvider
 from application.data.book.providers.openlibrary import OpenLibraryProvider
-from application.data.book.providers.search_merger import BookSearchMerger
 
 
 class TestOpenLibraryProvider:
