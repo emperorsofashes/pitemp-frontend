@@ -1397,28 +1397,6 @@ def _process_and_upload_cover(
                 LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
         raise RuntimeError("Failed to upload cover images to Cloudflare R2.")
 
-    # Update MongoDB
-    try:
-        updated = book_dao.set_cover_key(book_id, new_cover_key)
-        if not updated:
-            raise RuntimeError(f"Could not update cover_key in MongoDB for book {book_id}")
-    except Exception as e:
-        LOG.error(f"MongoDB update failed for book {book_id} after R2 upload: {e}")
-        # Roll back uploaded R2 objects
-        for key in uploaded_keys:
-            try:
-                r2_storage.delete_file(key)
-            except Exception as cleanup_err:
-                LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
-        raise RuntimeError("Failed to update book cover in database.")
-
-    # Delete old cover after successful upload
-    if old_cover_key and old_cover_key != new_cover_key:
-        try:
-            r2_storage.delete_cover_and_thumb(old_cover_key)
-        except Exception as e:
-            LOG.warning(f"Failed to delete previous cover objects for book {book_id}: {e}")
-
     # Purge CDN cache for the newly uploaded images
     urls_to_purge = []
     try:

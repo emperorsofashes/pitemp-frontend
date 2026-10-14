@@ -72,7 +72,6 @@ class BookDao:
                         LOG.error(f"Cache delete failed for key {key} after {max_retries} async attempts: {e}")
         
         import threading
-        import time
         thread = threading.Thread(target=_async_retry, daemon=True)
         thread.start()
 

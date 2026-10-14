@@ -13,7 +13,6 @@ from application.constants.app_constants import (
 )
 from application.data.book.book import Book
 from application.data.book.image_processor import (
-    AVIF_QUALITY,
     FULL_SIZE_MAX_DIMENSION,
     MAX_IMAGE_DIMENSION,
     THUMBNAIL_MAX_DIMENSION,
@@ -39,41 +38,41 @@ def _create_test_image(format="JPEG", size=(1200, 1800), color=(100, 150, 200)) 
 
 class TestImageProcessor:
     def test_valid_jpeg_upload(self):
-        """Test valid JPEG image processing into two AVIF images."""
+        """Test valid JPEG image processing into two WebP images."""
         data = _create_test_image(format="JPEG", size=(3000, 4500))
         full, thumb = process_book_cover(data)
 
         full_im = Image.open(io.BytesIO(full))
         thumb_im = Image.open(io.BytesIO(thumb))
 
-        assert full_im.format == "AVIF"
-        assert thumb_im.format == "AVIF"
+        assert full_im.format == "WEBP"
+        assert thumb_im.format == "WEBP"
         assert full_im.size == (1067, 1600)
         assert thumb_im.size == (267, 400)
 
     def test_valid_png_upload(self):
-        """Test valid PNG image processing into two AVIF images."""
+        """Test valid PNG image processing into two WebP images."""
         data = _create_test_image(format="PNG", size=(1200, 1600))
         full, thumb = process_book_cover(data)
 
         full_im = Image.open(io.BytesIO(full))
         thumb_im = Image.open(io.BytesIO(thumb))
 
-        assert full_im.format == "AVIF"
-        assert thumb_im.format == "AVIF"
+        assert full_im.format == "WEBP"
+        assert thumb_im.format == "WEBP"
         assert full_im.size == (1200, 1600)
         assert thumb_im.size == (300, 400)
 
     def test_valid_webp_upload(self):
-        """Test valid WebP image processing into two AVIF images."""
+        """Test valid WebP image processing into two WebP images."""
         data = _create_test_image(format="WEBP", size=(1600, 900))
         full, thumb = process_book_cover(data)
 
         full_im = Image.open(io.BytesIO(full))
         thumb_im = Image.open(io.BytesIO(thumb))
 
-        assert full_im.format == "AVIF"
-        assert thumb_im.format == "AVIF"
+        assert full_im.format == "WEBP"
+        assert thumb_im.format == "WEBP"
         assert full_im.size == (1600, 900)
         assert thumb_im.size == (400, 225)
 
@@ -133,22 +132,23 @@ class TestImageProcessor:
         thumb = _resize_preserving_aspect(orig, 400)
         assert thumb.size == (267, 400)
 
-    def test_avif_quality_setting(self):
-        """Verify quality parameter used for AVIF encoding is exactly 60."""
-        assert AVIF_QUALITY == 60
+    def test_webp_quality_setting(self):
+        """Verify quality parameter used for WebP encoding is exactly 80."""
+        from application.data.book.image_processor import WEBP_QUALITY
+        assert WEBP_QUALITY == 80
 
         data = _create_test_image(format="JPEG", size=(800, 1200))
         with patch.object(Image.Image, "save", autospec=True) as mock_save:
             # We mock save to inspect arguments
             def fake_save(self, fp, format=None, **kwargs):
-                assert format == "AVIF"
-                assert kwargs.get("quality") == 60
-                fp.write(b"fake-avif")
+                assert format == "WEBP"
+                assert kwargs.get("quality") == 80
+                fp.write(b"fake-webp")
 
             mock_save.side_effect = fake_save
             full, thumb = process_book_cover(data)
-            assert full == b"fake-avif"
-            assert thumb == b"fake-avif"
+            assert full == b"fake-webp"
+            assert thumb == b"fake-webp"
             assert mock_save.call_count == 2
 
     def test_invalid_non_image_file(self):
@@ -185,8 +185,8 @@ class TestImageProcessor:
 class TestR2Storage:
     def test_derive_thumb_key(self):
         """Verify deterministic thumbnail key generation."""
-        assert derive_thumb_key("covers/671d9e8a1f.avif") == "covers/671d9e8a1f_thumb.avif"
-        assert derive_thumb_key("covers/abc_123.avif") == "covers/abc_123_thumb.avif"
+        assert derive_thumb_key("covers/671d9e8a1f.webp") == "covers/671d9e8a1f_thumb.webp"
+        assert derive_thumb_key("covers/abc_123.webp") == "covers/abc_123_thumb.webp"
         assert derive_thumb_key("") == ""
 
     def test_r2_storage_urls(self):
@@ -201,12 +201,12 @@ class TestR2Storage:
             s3_client=mock_s3,
         )
 
-        cover_key = "covers/671d9e8a1f.avif"
-        assert storage.get_public_url(cover_key) == "https://pub-test.r2.dev/covers/671d9e8a1f.avif"
-        assert storage.get_thumb_url(cover_key) == "https://pub-test.r2.dev/covers/671d9e8a1f_thumb.avif"
+        cover_key = "covers/671d9e8a1f.webp"
+        assert storage.get_public_url(cover_key) == "https://pub-test.r2.dev/covers/671d9e8a1f.webp"
+        assert storage.get_thumb_url(cover_key) == "https://pub-test.r2.dev/covers/671d9e8a1f_thumb.webp"
 
     def test_r2_storage_upload_file(self):
-        """Verify boto3 upload uses correct bucket, key, data, and ContentType: image/avif."""
+        """Verify boto3 upload uses correct bucket, key, data, and ContentType: image/webp."""
         mock_s3 = Mock()
         storage = R2Storage(
             account_id="test-account",
@@ -217,14 +217,14 @@ class TestR2Storage:
             s3_client=mock_s3,
         )
 
-        test_data = b"avif-bytes"
-        storage.upload_file("covers/123.avif", test_data, content_type="image/avif")
+        test_data = b"webp-bytes"
+        storage.upload_file("covers/123.webp", test_data, content_type="image/webp")
 
         mock_s3.put_object.assert_called_once_with(
             Bucket="test-bucket",
-            Key="covers/123.avif",
+            Key="covers/123.webp",
             Body=test_data,
-            ContentType="image/avif",
+            ContentType="image/webp",
         )
 
     def test_r2_storage_delete_cover_and_thumb(self):
@@ -238,11 +238,11 @@ class TestR2Storage:
             s3_client=mock_s3,
         )
 
-        storage.delete_cover_and_thumb("covers/123.avif")
+        storage.delete_cover_and_thumb("covers/123.webp")
 
         assert mock_s3.delete_object.call_count == 2
-        mock_s3.delete_object.assert_any_call(Bucket="test-bucket", Key="covers/123.avif")
-        mock_s3.delete_object.assert_any_call(Bucket="test-bucket", Key="covers/123_thumb.avif")
+        mock_s3.delete_object.assert_any_call(Bucket="test-bucket", Key="covers/123.webp")
+        mock_s3.delete_object.assert_any_call(Bucket="test-bucket", Key="covers/123_thumb.webp")
 
 
 class TestCDNCachePurge:
@@ -260,7 +260,7 @@ class TestCDNCachePurge:
             cf_zone_id="test-zone-id",
         )
 
-        urls = ["https://pub-test.r2.dev/covers/123.avif", "https://pub-test.r2.dev/covers/123_thumb.avif"]
+        urls = ["https://pub-test.r2.dev/covers/123.webp", "https://pub-test.r2.dev/covers/123_thumb.webp"]
 
         with patch("requests.post") as mock_post:
             mock_response = Mock()
@@ -292,7 +292,7 @@ class TestCDNCachePurge:
             cf_zone_id=None,
         )
 
-        result = storage.purge_cdn_cache(["https://pub-test.r2.dev/covers/123.avif"])
+        result = storage.purge_cdn_cache(["https://pub-test.r2.dev/covers/123.webp"])
         assert result is False
 
     def test_purge_cdn_cache_cloudflare_api_error(self):
@@ -375,10 +375,10 @@ class TestCDNCachePurge:
             mock_response.json.return_value = {"success": True}
             mock_post.return_value = mock_response
 
-            result = storage.purge_cdn_cache(["", "https://pub-test.r2.dev/covers/123.avif", ""])
+            result = storage.purge_cdn_cache(["", "https://pub-test.r2.dev/covers/123.webp", ""])
             assert result is True
             # Only the valid URL should be sent
-            assert mock_post.call_args[1]["json"]["files"] == ["https://pub-test.r2.dev/covers/123.avif"]
+            assert mock_post.call_args[1]["json"]["files"] == ["https://pub-test.r2.dev/covers/123.webp"]
 
 
 # ============================================================================
@@ -515,7 +515,6 @@ class TestCoverRoutes:
         assert response.status_code == 200
         assert b"Uploaded file is not a valid image" in response.data
         mock_storage.s3_client.put_object.assert_not_called()
-        book_dao.set_cover_key.assert_not_called()
 
     def test_oversized_upload(self, client, app):
         """Uploading a file exceeding MAX_CONTENT_LENGTH (10 MB) triggers 413 error handler."""
@@ -540,7 +539,6 @@ class TestCoverRoutes:
         app.config["WTF_CSRF_ENABLED"] = False
         book_dao = app.config[BOOKS_DATABASE_CONFIG_KEY]
         book_dao.get_book.return_value = Book(id="671d9e8a1f", title="Test Book", authors=["Author"])
-        book_dao.set_cover_key.return_value = True
 
         with client.session_transaction() as sess:
             sess["authenticated"] = True
@@ -559,14 +557,11 @@ class TestCoverRoutes:
         assert mock_storage.s3_client.put_object.call_count == 2
         calls = mock_storage.s3_client.put_object.call_args_list
 
-        full_call = [c for c in calls if c.kwargs["Key"] == "covers/671d9e8a1f.avif"][0]
-        thumb_call = [c for c in calls if c.kwargs["Key"] == "covers/671d9e8a1f_thumb.avif"][0]
+        full_call = [c for c in calls if c.kwargs["Key"] == "covers/671d9e8a1f.webp"][0]
+        thumb_call = [c for c in calls if c.kwargs["Key"] == "covers/671d9e8a1f_thumb.webp"][0]
 
-        assert full_call.kwargs["ContentType"] == "image/avif"
-        assert thumb_call.kwargs["ContentType"] == "image/avif"
-
-        # Verify MongoDB updated
-        book_dao.set_cover_key.assert_called_once_with("671d9e8a1f", "covers/671d9e8a1f.avif")
+        assert full_call.kwargs["ContentType"] == "image/webp"
+        assert thumb_call.kwargs["ContentType"] == "image/webp"
 
     def test_replacement_of_existing_cover(self, client, app, mock_storage):
         """Replacing existing cover only deletes old R2 objects after new ones succeed and Mongo updates."""
@@ -577,9 +572,7 @@ class TestCoverRoutes:
             id="671d9e8a1f",
             title="Test Book",
             authors=["Author"],
-            cover_key="covers/old_id.avif",
         )
-        book_dao.set_cover_key.return_value = True
 
         with client.session_transaction() as sess:
             sess["authenticated"] = True
@@ -593,14 +586,8 @@ class TestCoverRoutes:
         )
         assert response.status_code == 200
 
-        # Old cover and thumb should be deleted
-        assert mock_storage.s3_client.delete_object.call_count == 2
-        mock_storage.s3_client.delete_object.assert_any_call(
-            Bucket="test-bucket", Key="covers/old_id.avif"
-        )
-        mock_storage.s3_client.delete_object.assert_any_call(
-            Bucket="test-bucket", Key="covers/old_id_thumb.avif"
-        )
+        # No old cover deletion since cover_key is now derived
+        assert mock_storage.s3_client.delete_object.call_count == 0
 
     def test_r2_upload_failure_does_not_modify_mongodb(self, client, app, mock_storage):
         """If R2 upload fails, MongoDB cover_key is NOT updated and partial upload is cleaned up."""
@@ -624,52 +611,24 @@ class TestCoverRoutes:
         assert response.status_code == 200
         assert b"Failed to upload cover images to Cloudflare R2" in response.data
 
-        # Mongo should NOT be updated
-        book_dao.set_cover_key.assert_not_called()
-
         # Partial upload (first key) should be cleaned up
         mock_storage.s3_client.delete_object.assert_called_once_with(
-            Bucket="test-bucket", Key="covers/b1.avif"
+            Bucket="test-bucket", Key="covers/b1.webp"
         )
 
     def test_mongodb_failure_after_r2_upload_cleans_up(self, client, app, mock_storage):
-        """If MongoDB update fails after R2 upload, the uploaded R2 objects are cleaned up."""
-        app.config["WTF_CSRF_ENABLED"] = False
-        book_dao = app.config[BOOKS_DATABASE_CONFIG_KEY]
-        book_dao.get_book.return_value = Book(id="b1", title="Test", authors=["Author"])
-        book_dao.set_cover_key.side_effect = Exception("MongoDB error")
-
-        with client.session_transaction() as sess:
-            sess["authenticated"] = True
-
-        img_bytes = _create_test_image()
-        response = client.post(
-            "/books/b1/cover",
-            data={"cover_image": (io.BytesIO(img_bytes), "cover.jpg")},
-            content_type="multipart/form-data",
-            follow_redirects=True,
-        )
-        assert response.status_code == 200
-        assert b"Failed to update book cover in database" in response.data
-
-        # Newly uploaded R2 objects must be cleaned up
-        assert mock_storage.s3_client.delete_object.call_count == 2
-        mock_storage.s3_client.delete_object.assert_any_call(Bucket="test-bucket", Key="covers/b1.avif")
-        mock_storage.s3_client.delete_object.assert_any_call(
-            Bucket="test-bucket", Key="covers/b1_thumb.avif"
-        )
+        """Test removed - MongoDB update no longer needed since cover_key is derived."""
+        pass
 
     def test_delete_cover_operation(self, client, app, mock_storage):
-        """Deleting a cover removes R2 objects and unsets cover_key in MongoDB."""
+        """Deleting a cover removes R2 objects using derived cover_key."""
         app.config["WTF_CSRF_ENABLED"] = False
         book_dao = app.config[BOOKS_DATABASE_CONFIG_KEY]
         book_dao.get_book.return_value = Book(
             id="671d9e8a1f",
             title="Test Book",
             authors=["Author"],
-            cover_key="covers/671d9e8a1f.avif",
         )
-        book_dao.delete_cover_key.return_value = True
 
         with client.session_transaction() as sess:
             sess["authenticated"] = True
@@ -684,14 +643,11 @@ class TestCoverRoutes:
         # Both R2 objects deleted
         assert mock_storage.s3_client.delete_object.call_count == 2
         mock_storage.s3_client.delete_object.assert_any_call(
-            Bucket="test-bucket", Key="covers/671d9e8a1f.avif"
+            Bucket="test-bucket", Key="covers/671d9e8a1f.webp"
         )
         mock_storage.s3_client.delete_object.assert_any_call(
-            Bucket="test-bucket", Key="covers/671d9e8a1f_thumb.avif"
+            Bucket="test-bucket", Key="covers/671d9e8a1f_thumb.webp"
         )
-
-        # MongoDB cover_key unset
-        book_dao.delete_cover_key.assert_called_once_with("671d9e8a1f")
 
 
 # ============================================================================
@@ -699,62 +655,16 @@ class TestCoverRoutes:
 # ============================================================================
 
 class TestBookModelAndDao:
-    def test_book_model_without_cover_key(self):
-        """Existing books without cover_key work normally."""
+    def test_book_model_derived_cover_key(self):
+        """Cover key and thumb key are derived from book ID."""
         doc = {
             "_id": ObjectId("507f1f77bcf86cd799439011"),
-            "title": "Legacy Book",
+            "title": "Test Book",
             "authors": ["Author"],
         }
         book = Book.from_mongo(doc)
-        assert book.cover_key is None
-        assert book.thumb_key is None
-
-    def test_book_model_with_cover_key(self):
-        """Books with cover_key derive thumb_key deterministically."""
-        doc = {
-            "_id": ObjectId("507f1f77bcf86cd799439011"),
-            "title": "New Book",
-            "authors": ["Author"],
-            "cover_key": "covers/507f1f77bcf86cd799439011.avif",
-        }
-        book = Book.from_mongo(doc)
-        assert book.cover_key == "covers/507f1f77bcf86cd799439011.avif"
-        assert book.thumb_key == "covers/507f1f77bcf86cd799439011_thumb.avif"
-
-    def test_dao_set_and_delete_cover_key(self):
-        """Test BookDao set_cover_key and delete_cover_key operations."""
-        from application.data.book.dao import BookDao
-
-        mock_client = MagicMock()
-        mock_db = MagicMock()
-        mock_coll = MagicMock()
-        mock_cache = MagicMock()
-
-        mock_client.__getitem__.return_value = mock_db
-        mock_db.__getitem__.return_value = mock_coll
-
-        dao = BookDao(client=mock_client, database=mock_db, cache=mock_cache)
-
-        mock_update_result = Mock()
-        mock_update_result.matched_count = 1
-        mock_coll.update_one.return_value = mock_update_result
-
-        # Test set_cover_key
-        success = dao.set_cover_key("507f1f77bcf86cd799439011", "covers/test.avif")
-        assert success is True
-        mock_coll.update_one.assert_called_with(
-            {"_id": ObjectId("507f1f77bcf86cd799439011")},
-            {"$set": {"cover_key": "covers/test.avif"}},
-        )
-
-        # Test delete_cover_key
-        success_del = dao.delete_cover_key("507f1f77bcf86cd799439011")
-        assert success_del is True
-        mock_coll.update_one.assert_called_with(
-            {"_id": ObjectId("507f1f77bcf86cd799439011")},
-            {"$unset": {"cover_key": ""}},
-        )
+        assert book.cover_key == "covers/507f1f77bcf86cd799439011.webp"
+        assert book.thumb_key == "covers/507f1f77bcf86cd799439011_thumb.webp"
 
     def test_book_image_host_properties(self):
         """Test cover_url and thumb_url properties using BOOK_IMAGE_HOST env var."""
@@ -763,10 +673,9 @@ class TestBookModelAndDao:
                 id="123",
                 title="Host Test",
                 authors=["Author"],
-                cover_key="covers/123.avif",
             )
-            assert book.cover_url == "https://books.example.com/covers/123.avif"
-            assert book.thumb_url == "https://books.example.com/covers/123_thumb.avif"
+            assert book.cover_url == "https://books.example.com/covers/123.webp"
+            assert book.thumb_url == "https://books.example.com/covers/123_thumb.webp"
 
     def test_book_image_host_fallback_r2_public_url(self):
         """Test cover_url and thumb_url fall back to R2_PUBLIC_URL if BOOK_IMAGE_HOST is not set."""
@@ -777,7 +686,6 @@ class TestBookModelAndDao:
                     id="123",
                     title="Fallback Test",
                     authors=["Author"],
-                    cover_key="covers/123.avif",
                 )
-                assert book.cover_url == "https://r2.example.com/covers/123.avif"
-                assert book.thumb_url == "https://r2.example.com/covers/123_thumb.avif"
+                assert book.cover_url == "https://r2.example.com/covers/123.webp"
+                assert book.thumb_url == "https://r2.example.com/covers/123_thumb.webp"
