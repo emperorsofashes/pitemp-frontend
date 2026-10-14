@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import os
 import time
 from asyncio import Future
 from concurrent.futures import ThreadPoolExecutor
@@ -35,6 +36,11 @@ class ApplicationDao:
             self.cache = fakeredis.FakeValkey()
         else:
             self.cache = cache
+
+        # Support resetting the cache for development testing
+        if os.environ.get("RESET_CACHE", "false") == "true":
+            LOG.info("Flushing cache")
+            self.cache.flushall()
 
         self.client = client
         # If no database provided, connect to one

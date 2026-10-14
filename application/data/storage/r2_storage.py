@@ -9,11 +9,11 @@ LOG = logging.getLogger(__name__)
 
 
 def derive_thumb_key(cover_key: str) -> str:
-    """Derive thumbnail key deterministically from cover key by inserting '_thumb' before '.avif'."""
+    """Derive thumbnail key deterministically from cover key by inserting '_thumb' before '.webp'."""
     if not cover_key:
         return ""
-    if cover_key.endswith(".avif"):
-        return f"{cover_key[:-5]}_thumb.avif"
+    if cover_key.endswith(".webp"):
+        return f"{cover_key[:-5]}_thumb.webp"
     return f"{cover_key}_thumb"
 
 
@@ -52,7 +52,7 @@ class R2Storage:
 
         LOG.info(f"Initialized R2Storage for bucket '{bucket_name}'")
 
-    def upload_file(self, key: str, data: bytes, content_type: str = "image/avif") -> bool:
+    def upload_file(self, key: str, data: bytes, content_type: str = "image/webp") -> bool:
         """Upload raw bytes to R2 with the specified content type."""
         try:
             self.s3_client.put_object(

@@ -9,7 +9,7 @@ MAX_IMAGE_DIMENSION = 10_000
 MAX_IMAGE_PIXELS = 50_000_000
 FULL_SIZE_MAX_DIMENSION = 1600
 THUMBNAIL_MAX_DIMENSION = 400
-AVIF_QUALITY = 60
+WEBP_QUALITY = 80
 
 # Configure Pillow decompression bomb protection
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
@@ -38,9 +38,9 @@ def _resize_preserving_aspect(image: Image.Image, max_dimension: int) -> Image.I
     return resized
 
 
-def _prepare_image_for_avif(image: Image.Image) -> Image.Image:
+def _prepare_image_for_webp(image: Image.Image) -> Image.Image:
     """
-    Ensure the image is in an appropriate color mode for AVIF encoding.
+    Ensure the image is in an appropriate color mode for WebP encoding.
     Preserves RGBA transparency if present, otherwise converts to RGB.
     Applies EXIF orientation if available.
     """
@@ -66,12 +66,12 @@ def _prepare_image_for_avif(image: Image.Image) -> Image.Image:
 
 def process_book_cover(file_bytes: bytes) -> tuple[bytes, bytes]:
     """
-    Validates and processes uploaded raw image bytes into two AVIF images:
-    1. Full-size cover (max 1600px longest dimension, q60 AVIF, no upscaling, aspect ratio preserved)
-    2. Thumbnail (max 400px longest dimension, q60 AVIF, from original decoded image, no upscaling, aspect ratio preserved)
+    Validates and processes uploaded raw image bytes into two WebP images:
+    1. Full-size cover (max 1600px longest dimension, q80 WebP, no upscaling, aspect ratio preserved)
+    2. Thumbnail (max 400px longest dimension, q80 WebP, from original decoded image, no upscaling, aspect ratio preserved)
 
     Returns:
-        tuple[bytes, bytes]: (full_size_avif_bytes, thumbnail_avif_bytes)
+        tuple[bytes, bytes]: (full_size_webp_bytes, thumbnail_webp_bytes)
         
     Raises:
         ImageValidationError: If the file cannot be decoded or exceeds safety limits.
@@ -107,7 +107,7 @@ def process_book_cover(file_bytes: bytes) -> tuple[bytes, bytes]:
 
             # Load image data into memory before closing context
             img.load()
-            prepared = _prepare_image_for_avif(img)
+            prepared = _prepare_image_for_webp(img)
 
     except ImageValidationError:
         raise
@@ -121,24 +121,24 @@ def process_book_cover(file_bytes: bytes) -> tuple[bytes, bytes]:
         LOG.error(f"Error opening image: {e}")
         raise ImageValidationError(f"Could not process image: {e}")
 
-    # Step 3: Generate full-size image (max 1600px longest side, q60 AVIF)
+    # Step 3: Generate full-size image (max 1600px longest side, q80 WebP)
     try:
         full_img = _resize_preserving_aspect(prepared, FULL_SIZE_MAX_DIMENSION)
         full_buf = io.BytesIO()
-        full_img.save(full_buf, format="AVIF", quality=AVIF_QUALITY)
+        full_img.save(full_buf, format="WEBP", quality=WEBP_QUALITY)
         full_bytes = full_buf.getvalue()
     except Exception as e:
-        LOG.error(f"Error generating full-size AVIF: {e}")
-        raise ImageValidationError(f"Failed to generate full-size AVIF cover: {e}")
+        LOG.error(f"Error generating full-size WebP: {e}")
+        raise ImageValidationError(f"Failed to generate full-size WebP cover: {e}")
 
-    # Step 4: Generate thumbnail from the ORIGINAL decoded image (max 400px longest side, q60 AVIF)
+    # Step 4: Generate thumbnail from the ORIGINAL decoded image (max 400px longest side, q80 WebP)
     try:
         thumb_img = _resize_preserving_aspect(prepared, THUMBNAIL_MAX_DIMENSION)
         thumb_buf = io.BytesIO()
-        thumb_img.save(thumb_buf, format="AVIF", quality=AVIF_QUALITY)
+        thumb_img.save(thumb_buf, format="WEBP", quality=WEBP_QUALITY)
         thumb_bytes = thumb_buf.getvalue()
     except Exception as e:
-        LOG.error(f"Error generating thumbnail AVIF: {e}")
-        raise ImageValidationError(f"Failed to generate thumbnail AVIF: {e}")
+        LOG.error(f"Error generating thumbnail WebP: {e}")
+        raise ImageValidationError(f"Failed to generate thumbnail WebP: {e}")
 
     return full_bytes, thumb_bytes

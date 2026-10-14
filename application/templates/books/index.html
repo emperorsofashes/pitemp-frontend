@@ -65,13 +65,9 @@
             {% for book in books %}
             <tr data-title="{{ book.title }}" data-authors="{{ book.authors|join(', ') if book.authors else '' }}" data-date-published="{{ book.date_published.strftime('%Y-%m-%d') if book.date_published else '' }}" data-page-count="{{ book.page_count or 0 }}" data-date-added="{{ book.date_added.isoformat() if book.date_added else '' }}">
                 <td class="text-center" style="vertical-align: middle;">
-                    {% if book.cover_key %}
-                        <a href="/books/{{ book.id }}">
-                            <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} thumbnail" class="rounded" style="max-height: 200px; max-width: 150px; object-fit: contain;" loading="lazy">
-                        </a>
-                    {% else %}
-                        <span class="text-muted" style="font-size: 0.8rem;">—</span>
-                    {% endif %}
+                    <a href="/books/{{ book.id }}">
+                        <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} thumbnail" class="rounded" style="max-height: 200px; max-width: 150px; object-fit: contain;" loading="lazy" onerror="this.style.display='none'">
+                    </a>
                 </td>
                 <td><a href="/books/{{ book.id }}" style="color: #5BC0EB;">{{ book.title }}</a></td>
                 <td>{{ book.authors|join(', ') if book.authors else '—' }}</td>

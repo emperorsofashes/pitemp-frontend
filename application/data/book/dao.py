@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 from datetime import datetime, timedelta
 from typing import Any
@@ -22,6 +23,11 @@ class BookDao:
         self.client = client
         self.database: Database = database if database is not None else self.client[BOOKS_DB_NAME]
         self.books_collection: Collection = self.database[BOOKS_COLLECTION_NAME]
+
+        # Support resetting the cache for development testing
+        if os.environ.get("RESET_CACHE", "false") == "true":
+            LOG.info("Flushing cache")
+            self.cache.flushall()
 
         LOG.info(f"Connected to database: {BOOKS_DB_NAME}")
 
@@ -176,39 +182,6 @@ class BookDao:
         except Exception:
             return False
 
-    def set_cover_key(self, book_id: str, cover_key: str) -> bool:
-        """Update the cover_key for a book."""
-        try:
-            result = self.books_collection.update_one(
-                {"_id": ObjectId(book_id)},
-                {"$set": {"cover_key": cover_key}},
-            )
-            self._retry_cache_delete_async("all_books_title_-1")
-            self._retry_cache_delete_async("all_books_date_published_-1")
-            self._retry_cache_delete_async("all_books_date_added_-1")
-            self._retry_cache_delete_async("all_books_page_count_-1")
-            self._retry_cache_delete_async(f"book_{book_id}")
-            return result.matched_count > 0
-        except Exception as e:
-            LOG.error(f"Failed to set cover_key for book {book_id}: {e}")
-            return False
-
-    def delete_cover_key(self, book_id: str) -> bool:
-        """Remove the cover_key from a book."""
-        try:
-            result = self.books_collection.update_one(
-                {"_id": ObjectId(book_id)},
-                {"$unset": {"cover_key": ""}},
-            )
-            self._retry_cache_delete_async("all_books_title_-1")
-            self._retry_cache_delete_async("all_books_date_published_-1")
-            self._retry_cache_delete_async("all_books_date_added_-1")
-            self._retry_cache_delete_async("all_books_page_count_-1")
-            self._retry_cache_delete_async(f"book_{book_id}")
-            return result.matched_count > 0
-        except Exception as e:
-            LOG.error(f"Failed to delete cover_key for book {book_id}: {e}")
-            return False
 
     def get_num_total_books(self) -> int:
         """Get total count of books."""

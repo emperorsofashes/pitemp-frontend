@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 import threading
 import time
@@ -31,6 +32,11 @@ class BirdDao:
 
         # Create unique index on scientific_name to ensure one document per species
         self.life_list_collection.create_index([("scientific_name", 1)], unique=True)
+
+        # Support resetting the cache for development testing
+        if os.environ.get("RESET_CACHE", "false") == "true":
+            LOG.info("Flushing cache")
+            self.cache.flushall()
 
         LOG.info(f"Connected to database: {BIRD_DB_NAME}")
 

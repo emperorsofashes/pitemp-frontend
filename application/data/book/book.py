@@ -15,16 +15,16 @@ class Book:
     oclc_number: str | None = None
     page_count: int | None = None
     date_added: datetime | None = None
-    cover_key: str | None = None
 
     @property
-    def thumb_key(self) -> str | None:
-        """Derive thumbnail key deterministically from cover_key."""
-        if not self.cover_key:
-            return None
-        if self.cover_key.endswith(".avif"):
-            return f"{self.cover_key[:-5]}_thumb.avif"
-        return f"{self.cover_key}_thumb"
+    def cover_key(self) -> str:
+        """Derive cover key deterministically from book ID."""
+        return f"covers/{self.id}.webp"
+
+    @property
+    def thumb_key(self) -> str:
+        """Derive thumbnail key deterministically from book ID."""
+        return f"covers/{self.id}_thumb.webp"
 
     @property
     def thumb_url(self) -> str | None:
@@ -53,5 +53,4 @@ class Book:
             oclc_number=doc.get("oclc_number"),
             page_count=doc.get("page_count"),
             date_added=doc.get("date_added"),
-            cover_key=doc.get("cover_key"),
         )

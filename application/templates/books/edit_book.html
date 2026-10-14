@@ -41,7 +41,7 @@
                         <div class="form-group mb-2">
                             <label for="cover_image">{% if book.cover_key %}Replace Cover Image{% else %}Upload Cover Image{% endif %}</label>
                             <input type="file" name="cover_image" id="cover_image" class="form-control-file text-white" accept="image/*" required>
-                            <small class="form-text text-muted">Supports JPEG, PNG, WebP (max 10 MB). Drag & drop an image here, paste with Ctrl+V, or click to browse. Automatically processed into full-size and thumbnail AVIF images.</small>
+                            <small class="form-text text-muted">Supports JPEG, PNG, WebP (max 10 MB). Drag & drop an image here, paste with Ctrl+V, or click to browse. Automatically processed into full-size and thumbnail WebP images.</small>
                         </div>
                         <button type="submit" class="btn btn-primary" id="upload-btn">
                             {% if book.cover_key %}Replace Cover{% else %}Upload Cover{% endif %}

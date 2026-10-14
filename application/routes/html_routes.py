@@ -1,6 +1,5 @@
 import logging
 import secrets
-import threading
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import urljoin, urlparse
@@ -659,20 +658,20 @@ def books_add():
                 try:
                     file_bytes = cover_file.read()
                     if file_bytes:
-                        LOG.info(f"Queueing async cover processing for new book {book_id}, size: {len(file_bytes)} bytes")
-                        # Process in background thread
-                        thread = threading.Thread(
-                            target=_process_and_upload_cover_async,
-                            args=(book_id, file_bytes, book_dao, r2_storage),
-                            daemon=True
-                        )
-                        thread.start()
-                        flash("Book added successfully. Cover image is being processed in the background and will appear shortly.", "success")
+                        LOG.info(f"Processing cover for new book {book_id}, size: {len(file_bytes)} bytes")
+                        _process_and_upload_cover(book_id, file_bytes, book_dao, r2_storage)
+                        flash("Book added successfully with cover image.", "success")
                     else:
                         LOG.warning(f"Cover file is empty for new book {book_id}")
+                except ImageValidationError as e:
+                    LOG.warning(f"Image validation failed for new book {book_id}: {e}")
+                    flash(f"Book added, but cover image failed validation: {e}", "warning")
+                except RuntimeError as e:
+                    LOG.error(f"Cover upload failed for new book {book_id}: {e}")
+                    flash("Book added, but failed to upload cover image.", "warning")
                 except Exception as e:
-                    LOG.error(f"Error queuing cover processing for new book {book_id}: {e}")
-                    flash("Book added, but failed to queue cover image processing.", "warning")
+                    LOG.error(f"Unexpected error processing cover for new book {book_id}: {e}")
+                    flash("Book added, but failed to process cover image.", "warning")
             else:
                 if not r2_storage:
                     LOG.warning("R2 storage not configured, skipping cover upload")
@@ -682,21 +681,21 @@ def books_add():
             # Download and process cover from URL
             try:
                 image_bytes = download_remote_image(cover_url)
-                LOG.info(f"Queueing async cover processing from URL for new book {book_id}")
-                # Process in background thread
-                thread = threading.Thread(
-                    target=_process_and_upload_cover_async,
-                    args=(book_id, image_bytes, book_dao, r2_storage),
-                    daemon=True
-                )
-                thread.start()
-                flash("Book added successfully. Cover image is being processed in the background and will appear shortly.", "success")
+                LOG.info(f"Processing cover from URL for new book {book_id}")
+                _process_and_upload_cover(book_id, image_bytes, book_dao, r2_storage)
+                flash("Book added successfully with cover image.", "success")
             except (RemoteImageDownloadError, SSRFValidationError) as e:
                 LOG.warning(f"Failed to download cover from URL for new book {book_id}: {e}")
                 flash("Book added, but failed to download cover image from URL.", "warning")
+            except ImageValidationError as e:
+                LOG.warning(f"Image validation failed for new book {book_id} from URL: {e}")
+                flash(f"Book added, but cover image failed validation: {e}", "warning")
+            except RuntimeError as e:
+                LOG.error(f"Cover upload from URL failed for new book {book_id}: {e}")
+                flash("Book added, but failed to upload cover image.", "warning")
             except Exception as e:
                 LOG.error(f"Unexpected error processing cover from URL for new book {book_id}: {e}")
-                flash("Book added, but failed to queue cover image processing.", "warning")
+                flash("Book added, but failed to process cover image.", "warning")
 
         if not (cover_file and r2_storage and (cover_file.filename or cover_file.content_length)) and not (cover_url and r2_storage):
             flash("Book added successfully.", "success")
@@ -920,20 +919,15 @@ def books_delete_cover(book_id):
         return redirect("/books")
 
     r2_storage = _get_r2_storage()
-    old_cover_key = book.cover_key
-
-    if old_cover_key:
-        if r2_storage:
-            try:
-                r2_storage.delete_cover_and_thumb(old_cover_key)
-            except Exception as e:
-                LOG.error(f"Failed to delete cover from R2 for book {book_id}: {e}")
-
-        # Remove cover_key from MongoDB
-        book_dao.delete_cover_key(book_id)
-        flash("Cover image deleted successfully.", "success")
+    if r2_storage:
+        try:
+            r2_storage.delete_cover_and_thumb(book.cover_key)
+            flash("Cover image deleted successfully.", "success")
+        except Exception as e:
+            LOG.error(f"Failed to delete cover from R2 for book {book_id}: {e}")
+            flash("Failed to delete cover image.", "danger")
     else:
-        flash("Book does not have a cover image to delete.", "warning")
+        flash("R2 storage not configured.", "danger")
 
     return redirect(f"/books/edit/{book_id}")
 
@@ -943,7 +937,7 @@ def books_delete(book_id):
     book_dao = _get_books_dao()
     if book_dao is not None:
         book = book_dao.get_book(book_id)
-        if book and book.cover_key:
+        if book:
             r2_storage = _get_r2_storage()
             if r2_storage:
                 try:
@@ -1372,7 +1366,7 @@ def _process_and_upload_cover(
     Returns:
         True if successful, False otherwise
     """
-    # Process image into AVIF
+    # Process image into WebP
     try:
         full_bytes, thumb_bytes = process_book_cover(image_bytes)
     except ImageValidationError as e:
@@ -1382,20 +1376,16 @@ def _process_and_upload_cover(
         LOG.error(f"Unexpected error processing image for book {book_id}: {e}")
         raise RuntimeError(f"Failed to process cover image: {e}")
 
-    new_cover_key = f"covers/{book_id}.avif"
-    new_thumb_key = f"covers/{book_id}_thumb.avif"
-    
-    # Get current book to check for existing cover
-    book = book_dao.get_book(book_id)
-    old_cover_key = book.cover_key if book else None
+    new_cover_key = f"covers/{book_id}.webp"
+    new_thumb_key = f"covers/{book_id}_thumb.webp"
 
     # Upload to R2 with rollback on failure
     uploaded_keys = []
     try:
-        r2_storage.upload_file(new_cover_key, full_bytes, content_type="image/avif")
+        r2_storage.upload_file(new_cover_key, full_bytes, content_type="image/webp")
         uploaded_keys.append(new_cover_key)
 
-        r2_storage.upload_file(new_thumb_key, thumb_bytes, content_type="image/avif")
+        r2_storage.upload_file(new_thumb_key, thumb_bytes, content_type="image/webp")
         uploaded_keys.append(new_thumb_key)
     except Exception as e:
         LOG.error(f"Failed to upload images to R2 for book {book_id}: {e}")
@@ -1449,23 +1439,3 @@ def _process_and_upload_cover(
     return True
 
 
-def _process_and_upload_cover_async(
-    book_id: str,
-    image_bytes: bytes,
-    book_dao: BookDao,
-    r2_storage: R2Storage,
-) -> None:
-    """
-    Wrapper function to process and upload cover image in a background thread.
-    Logs errors but does not raise them to avoid affecting the main request.
-    """
-    try:
-        LOG.info(f"Starting async cover processing for book {book_id}")
-        _process_and_upload_cover(book_id, image_bytes, book_dao, r2_storage)
-        LOG.info(f"Successfully completed async cover processing for book {book_id}")
-    except ImageValidationError as e:
-        LOG.warning(f"Async cover image validation failed for book {book_id}: {e}")
-    except RuntimeError as e:
-        LOG.error(f"Async cover upload failed for book {book_id}: {e}")
-    except Exception as e:
-        LOG.error(f"Unexpected error during async cover processing for book {book_id}: {e}")
