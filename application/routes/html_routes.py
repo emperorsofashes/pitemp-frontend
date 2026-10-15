@@ -615,6 +615,12 @@ def books_add():
         if authors_str:
             authors = [a.strip() for a in authors_str.split(",") if a.strip()]
 
+        # Clean ISBN and OCLC - remove hyphens and spaces
+        if isbn:
+            isbn = isbn.replace("-", "").replace(" ", "")
+        if oclc_number:
+            oclc_number = oclc_number.replace("-", "").replace(" ", "")
+
         LOG.info(f"Adding new book: {title}")
 
         # Parse date published
@@ -731,6 +737,12 @@ def books_edit_book(book_id):
         if authors_str:
             authors = [a.strip() for a in authors_str.split(",") if a.strip()]
 
+        # Clean ISBN and OCLC - remove hyphens and spaces
+        if isbn:
+            isbn = isbn.replace("-", "").replace(" ", "")
+        if oclc_number:
+            oclc_number = oclc_number.replace("-", "").replace(" ", "")
+
         # Parse date published
         date_published = None
         if date_published_str:
@@ -820,9 +832,15 @@ def books_update_field(book_id):
             else:
                 book.page_count = None
         elif field == "isbn":
-            book.isbn = value.strip() if value else None
+            if value:
+                book.isbn = value.strip().replace("-", "").replace(" ", "")
+            else:
+                book.isbn = None
         elif field == "oclc_number":
-            book.oclc_number = value.strip() if value else None
+            if value:
+                book.oclc_number = value.strip().replace("-", "").replace(" ", "")
+            else:
+                book.oclc_number = None
         else:
             return jsonify({"success": False, "error": f"Invalid field: {field}"}), 400
 
