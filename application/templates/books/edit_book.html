@@ -9,6 +9,7 @@
 <div class="container mt-4">
     <h1>Edit Book</h1>
 
+    <a href="/books" class="btn btn-secondary mb-3">Back to Collection</a>
     <a href="/books/{{ book.id }}" class="btn btn-secondary mb-3">Back to Book</a>
 
     {% with messages = get_flashed_messages(with_categories=true) %}

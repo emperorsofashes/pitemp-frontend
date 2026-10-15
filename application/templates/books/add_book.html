@@ -451,8 +451,11 @@ function performSearch(query) {
         })
         .then(data => {
             if (data.success) {
+                searchStatus.innerHTML = '';
                 displaySearchResults(data.results, data.provider_status);
-                showSearchStatus(`Found ${data.results.length} book(s)`, 'success');
+                if (data.results.length > 0) {
+                    showSearchStatus(`Found ${data.results.length} book(s)`, 'success');
+                }
             } else {
                 throw new Error(data.error || 'Unknown error');
             }
