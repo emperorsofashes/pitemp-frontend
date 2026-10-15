@@ -771,6 +771,78 @@ def books_edit_book(book_id):
     return render_template("books/edit_book.html", book=book)
 
 
+@HTML_BLUEPRINT.route("/books/<book_id>/update-field", methods=["POST"])
+def books_update_field(book_id):
+    """API endpoint for inline field updates in bulk edit mode."""
+    if not session.get("authenticated"):
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        return jsonify({"success": False, "error": "Database not configured"}), 500
+
+    book = book_dao.get_book(book_id)
+    if book is None:
+        return jsonify({"success": False, "error": "Book not found"}), 404
+
+    data = request.get_json()
+    field = data.get("field")
+    value = data.get("value")
+
+    if not field:
+        return jsonify({"success": False, "error": "Field name required"}), 400
+
+    # Validate and parse the field value, updating the book object
+    try:
+        if field == "title":
+            if not value or not value.strip():
+                return jsonify({"success": False, "error": "Title cannot be empty"}), 400
+            book.title = value.strip()
+        elif field == "authors":
+            book.authors = [a.strip() for a in value.split(",") if a.strip()] if value else []
+        elif field == "date_published":
+            if value and value.strip():
+                try:
+                    book.date_published = datetime.strptime(value.strip(), "%Y-%m-%d")
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid date format (use YYYY-MM-DD)"}), 400
+            else:
+                book.date_published = None
+        elif field == "page_count":
+            if value and value.strip():
+                try:
+                    page_count = int(value.strip())
+                    if page_count < 0:
+                        return jsonify({"success": False, "error": "Page count must be non-negative"}), 400
+                    book.page_count = page_count
+                except ValueError:
+                    return jsonify({"success": False, "error": "Page count must be a number"}), 400
+            else:
+                book.page_count = None
+        elif field == "isbn":
+            book.isbn = value.strip() if value else None
+        elif field == "oclc_number":
+            book.oclc_number = value.strip() if value else None
+        else:
+            return jsonify({"success": False, "error": f"Invalid field: {field}"}), 400
+
+        # Update the book with all fields (DAO requires title and authors)
+        book_dao.update_book(
+            book_id=book_id,
+            title=book.title,
+            authors=book.authors,
+            date_published=book.date_published,
+            isbn=book.isbn,
+            oclc_number=book.oclc_number,
+            page_count=book.page_count,
+        )
+
+        return jsonify({"success": True})
+    except Exception as e:
+        LOG.error(f"Error updating field {field} for book {book_id}: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @HTML_BLUEPRINT.route("/books/<book_id>/cover", methods=["POST"])
 def books_upload_cover(book_id):
     if not session.get("authenticated"):
