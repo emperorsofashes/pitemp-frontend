@@ -184,6 +184,7 @@ function toggleBulkEdit(enabled) {
             cell.classList.add('bulk-edit-active');
             cell.style.backgroundColor = '#2a2a2a';
             cell.style.cursor = 'text';
+            cell.style.border = '1px solid #5BC0EB';
 
             // For title cells, replace the link with plain text
             if (cell.dataset.field === 'title') {
@@ -191,6 +192,11 @@ function toggleBulkEdit(enabled) {
                 if (link) {
                     cell.textContent = link.textContent;
                 }
+            }
+
+            // Replace "—" with empty string for easier editing
+            if (cell.textContent.trim() === '—') {
+                cell.textContent = '';
             }
         });
     } else {
@@ -203,6 +209,12 @@ function toggleBulkEdit(enabled) {
             cell.classList.remove('bulk-edit-active');
             cell.style.backgroundColor = '';
             cell.style.cursor = '';
+            cell.style.border = '';
+
+            // Restore "—" for empty cells
+            if (!cell.textContent.trim()) {
+                cell.textContent = '—';
+            }
 
             // Restore link for title cells
             if (cell.dataset.field === 'title') {
