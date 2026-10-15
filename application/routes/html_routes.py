@@ -660,18 +660,18 @@ def books_add():
                     if file_bytes:
                         LOG.info(f"Processing cover for new book {book_id}, size: {len(file_bytes)} bytes")
                         _process_and_upload_cover(book_id, file_bytes, book_dao, r2_storage)
-                        flash("Book added successfully with cover image.", "success")
+                        flash(f"Book added successfully with cover image. <a href='/books/{book_id}' class='alert-link'>View book</a>", "success")
                     else:
                         LOG.warning(f"Cover file is empty for new book {book_id}")
                 except ImageValidationError as e:
                     LOG.warning(f"Image validation failed for new book {book_id}: {e}")
-                    flash(f"Book added, but cover image failed validation: {e}", "warning")
+                    flash(f"Book added, but cover image failed validation: {e}. <a href='/books/{book_id}' class='alert-link'>View book</a>", "warning")
                 except RuntimeError as e:
                     LOG.error(f"Cover upload failed for new book {book_id}: {e}")
-                    flash("Book added, but failed to upload cover image.", "warning")
+                    flash(f"Book added, but failed to upload cover image. <a href='/books/{book_id}' class='alert-link'>View book</a>", "warning")
                 except Exception as e:
                     LOG.error(f"Unexpected error processing cover for new book {book_id}: {e}")
-                    flash("Book added, but failed to process cover image.", "warning")
+                    flash(f"Book added, but failed to process cover image. <a href='/books/{book_id}' class='alert-link'>View book</a>", "warning")
             else:
                 if not r2_storage:
                     LOG.warning("R2 storage not configured, skipping cover upload")
@@ -683,24 +683,24 @@ def books_add():
                 image_bytes = download_remote_image(cover_url)
                 LOG.info(f"Processing cover from URL for new book {book_id}")
                 _process_and_upload_cover(book_id, image_bytes, book_dao, r2_storage)
-                flash("Book added successfully with cover image.", "success")
+                flash(f"Book added successfully with cover image. <a href='/books/{book_id}' class='alert-link'>View book</a>", "success")
             except (RemoteImageDownloadError, SSRFValidationError) as e:
                 LOG.warning(f"Failed to download cover from URL for new book {book_id}: {e}")
-                flash("Book added, but failed to download cover image from URL.", "warning")
+                flash(f"Book added, but failed to download cover image from URL. <a href='/books/{book_id}' class='alert-link'>View book</a>", "warning")
             except ImageValidationError as e:
                 LOG.warning(f"Image validation failed for new book {book_id} from URL: {e}")
-                flash(f"Book added, but cover image failed validation: {e}", "warning")
+                flash(f"Book added, but cover image failed validation: {e}. <a href='/books/{book_id}' class='alert-link'>View book</a>", "warning")
             except RuntimeError as e:
                 LOG.error(f"Cover upload from URL failed for new book {book_id}: {e}")
-                flash("Book added, but failed to upload cover image.", "warning")
+                flash(f"Book added, but failed to upload cover image. <a href='/books/{book_id}' class='alert-link'>View book</a>", "warning")
             except Exception as e:
                 LOG.error(f"Unexpected error processing cover from URL for new book {book_id}: {e}")
-                flash("Book added, but failed to process cover image.", "warning")
+                flash(f"Book added, but failed to process cover image. <a href='/books/{book_id}' class='alert-link'>View book</a>", "warning")
 
         if not (cover_file and r2_storage and (cover_file.filename or cover_file.content_length)) and not (cover_url and r2_storage):
-            flash("Book added successfully.", "success")
+            flash(f"Book added successfully. <a href='/books/{book_id}' class='alert-link'>View book</a>", "success")
 
-        return redirect("/books")
+        return redirect("/books/add")
 
     # Require login for adding books
     if not session.get("authenticated"):

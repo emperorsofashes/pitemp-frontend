@@ -124,6 +124,16 @@
 
     <a href="/books" class="btn btn-secondary mb-3">Back to Book Collection</a>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'message' else 'info' }} mb-3" role="alert">
+                    {{ message|safe }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <div class="card bg-dark text-white">
         <div class="card-body">
             <h5 class="card-title">Book Details</h5>
@@ -271,6 +281,11 @@
 flatpickr("#date_published", {
     dateFormat: "Y-m-d",
     allowInput: true
+});
+
+// Auto-focus ISBN lookup field on page load for rapid barcode scanning
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('isbn_lookup').focus();
 });
 
 // Search mode management
