@@ -154,6 +154,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const sortValue = savedSort || 'date_added_desc';
     document.getElementById('sort-select').value = sortValue;
     sortBooks(sortValue);
+
+    // Restore scroll position from sessionStorage
+    const savedScrollPosition = sessionStorage.getItem('booksScrollPosition');
+    if (savedScrollPosition) {
+        window.scrollTo(0, parseInt(savedScrollPosition));
+    }
+});
+
+// Save scroll position to sessionStorage on scroll
+window.addEventListener('scroll', function() {
+    sessionStorage.setItem('booksScrollPosition', window.scrollY);
 });
 
 document.getElementById('sort-select').addEventListener('change', function() {
