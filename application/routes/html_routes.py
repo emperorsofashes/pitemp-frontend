@@ -22,6 +22,7 @@ from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
 from application.data.book.dao import BookDao
 from application.data.book.image_processor import ImageValidationError, process_book_cover
+from application.data.book.utils import capitalize_title
 from application.data.book.providers import (
     BookSearchMerger,
     GoogleBooksProvider,
@@ -1102,9 +1103,12 @@ def book_lookup():
         if metadata.date_published:
             date_published_str = metadata.date_published.strftime("%Y-%m-%d")
 
+        # Capitalize title from external providers
+        capitalized_title = capitalize_title(metadata.title) if metadata.title else metadata.title
+
         result = {
             "success": True,
-            "title": metadata.title,
+            "title": capitalized_title,
             "authors": metadata.authors or [],
             "date_published": date_published_str,
             "page_count": metadata.page_count,
@@ -1166,8 +1170,10 @@ def book_search():
         # Convert SearchResult objects to dicts for JSON response
         results_dicts = []
         for result in results:
+            # Capitalize title from external providers
+            capitalized_title = capitalize_title(result.title) if result.title else result.title
             result_dict = {
-                "title": result.title,
+                "title": capitalized_title,
                 "authors": result.authors,
                 "publisher": result.publisher,
                 "publication_date": result.publication_date.strftime("%Y-%m-%d") if result.publication_date else None,
