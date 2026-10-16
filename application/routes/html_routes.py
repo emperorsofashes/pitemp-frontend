@@ -582,6 +582,22 @@ def books_edit():
     return render_template("books/index.html", books=books, edit_mode=True)
 
 
+@HTML_BLUEPRINT.route("/books/bulk-edit")
+def books_bulk_edit():
+    book_dao = _get_books_dao()
+    if book_dao is None:
+        return render_template("books/not_configured.html")
+
+    if not session.get("authenticated"):
+        return redirect(url_for(
+            "routes_html.login",
+            next=request.full_path.rstrip("?")
+        ))
+
+    books = book_dao.get_all_books()
+    return render_template("books/bulk_edit.html", books=books)
+
+
 @HTML_BLUEPRINT.route("/books/<book_id>")
 def book_details(book_id):
     book_dao = _get_books_dao()

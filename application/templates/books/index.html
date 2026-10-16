@@ -18,7 +18,7 @@
         {% else %}
             <a href="/books/edit" class="btn btn-primary mr-2 my-1">Edit Mode</a>
         {% endif %}
-        <button id="bulk-edit-toggle" class="btn btn-info mr-2 my-1">Bulk Edit</button>
+        <a href="/books/bulk-edit" class="btn btn-info mr-2 my-1">Bulk Edit</a>
         <a href="/books/add" class="btn btn-success mr-2 my-1">Add Book</a>
 
         <div class="d-inline-block my-1 ml-md-2">
@@ -55,8 +55,7 @@
                 <th>Date Published</th>
                 <th>Page Count</th>
                 <th>Date Added</th>
-                <th>ISBN</th>
-                <th>OCLC</th>
+                <th>ISBN / OCLC</th>
                 {% if edit_mode %}
                 <th>Actions</th>
                 {% endif %}
@@ -72,11 +71,22 @@
                 </td>
                 <td class="editable-cell" data-field="title"><a href="/books/{{ book.id }}" style="color: #5BC0EB;">{{ book.title }}</a></td>
                 <td class="editable-cell" data-field="authors">{{ book.authors|join(', ') if book.authors else '—' }}</td>
-                <td class="editable-cell" data-field="date_published">{{ book.date_published.strftime('%Y-%m-%d') if book.date_published else '—' }}</td>
+                <td class="editable-cell" data-field="date_published" title="{{ book.date_published.strftime('%Y-%m-%d') if book.date_published else '' }}">{{ book.date_published.strftime('%Y') if book.date_published else '—' }}</td>
                 <td class="editable-cell" data-field="page_count">{{ book.page_count if book.page_count else '—' }}</td>
                 <td>{{ book.date_added.strftime('%Y-%m-%d') if book.date_added else '—' }}</td>
-                <td class="editable-cell" data-field="isbn">{{ book.isbn or '—' }}</td>
-                <td class="editable-cell" data-field="oclc_number">{{ book.oclc_number or '—' }}</td>
+                <td class="editable-cell">
+                    <div class="isbn-oclc-cell">
+                        {% if book.isbn %}
+                        <div><a href="https://openlibrary.org/isbn/{{ book.isbn }}" target="_blank" style="color: #5BC0EB;">{{ book.isbn }}</a></div>
+                        {% endif %}
+                        {% if book.oclc_number %}
+                        <div><a href="https://search.worldcat.org/title/{{ book.oclc_number }}" target="_blank" style="color: #5BC0EB;">{{ book.oclc_number }}</a></div>
+                        {% endif %}
+                        {% if not book.isbn and not book.oclc_number %}
+                        —
+                        {% endif %}
+                    </div>
+                </td>
                 {% if edit_mode %}
                 <td>
                     <a href="/books/edit/{{ book.id }}" class="btn btn-warning btn-sm">Edit</a>
@@ -96,6 +106,14 @@
     {% endif %}
 </div>
 
+<style>
+.isbn-oclc-cell div {
+    margin-bottom: 4px;
+}
+.isbn-oclc-cell div:last-child {
+    margin-bottom: 0;
+}
+</style>
 <script>
 function sortBooks(sortValue) {
     const tbody = document.getElementById('books-body');
@@ -171,181 +189,5 @@ document.getElementById('sort-select').addEventListener('change', function() {
     localStorage.setItem('booksSort', this.value);
     sortBooks(this.value);
 });
-
-// Bulk Edit Mode
-let bulkEditMode = false;
-const bulkEditToggle = document.getElementById('bulk-edit-toggle');
-
-bulkEditToggle.addEventListener('click', function() {
-    bulkEditMode = !bulkEditMode;
-    toggleBulkEdit(bulkEditMode);
-});
-
-function toggleBulkEdit(enabled) {
-    const editableCells = document.querySelectorAll('.editable-cell');
-    const titleCells = document.querySelectorAll('.editable-cell[data-field="title"]');
-
-    if (enabled) {
-        bulkEditToggle.textContent = 'Exit Bulk Edit';
-        bulkEditToggle.classList.remove('btn-info');
-        bulkEditToggle.classList.add('btn-warning');
-
-        editableCells.forEach(cell => {
-            cell.setAttribute('contenteditable', 'true');
-            cell.classList.add('bulk-edit-active');
-            cell.style.backgroundColor = '#2a2a2a';
-            cell.style.cursor = 'text';
-            cell.style.border = '1px solid #5BC0EB';
-
-            // For title cells, replace the link with plain text
-            if (cell.dataset.field === 'title') {
-                const link = cell.querySelector('a');
-                if (link) {
-                    cell.textContent = link.textContent;
-                }
-            }
-
-            // Replace "—" with empty string for easier editing
-            if (cell.textContent.trim() === '—') {
-                cell.textContent = '';
-            }
-        });
-    } else {
-        bulkEditToggle.textContent = 'Bulk Edit';
-        bulkEditToggle.classList.remove('btn-warning');
-        bulkEditToggle.classList.add('btn-info');
-
-        editableCells.forEach(cell => {
-            cell.removeAttribute('contenteditable');
-            cell.classList.remove('bulk-edit-active');
-            cell.style.backgroundColor = '';
-            cell.style.cursor = '';
-            cell.style.border = '';
-
-            // Restore "—" for empty cells
-            if (!cell.textContent.trim()) {
-                cell.textContent = '—';
-            }
-
-            // Restore link for title cells
-            if (cell.dataset.field === 'title') {
-                const bookId = cell.closest('tr').dataset.bookId;
-                cell.innerHTML = `<a href="/books/${bookId}" style="color: #5BC0EB;">${cell.textContent}</a>`;
-            }
-        });
-    }
-}
-
-// Handle inline edits
-document.addEventListener('blur', function(e) {
-    if (!bulkEditMode) return;
-
-    const cell = e.target.closest('.editable-cell');
-    if (!cell) return;
-
-    const bookId = cell.closest('tr').dataset.bookId;
-    const field = cell.dataset.field;
-    const newValue = cell.textContent.trim();
-
-    // Don't save if value hasn't changed
-    const originalValue = cell.closest('tr').dataset[field === 'oclc_number' ? 'oclc' : field];
-    if (newValue === originalValue || (newValue === '—' && !originalValue)) return;
-
-    saveField(bookId, field, newValue, cell);
-}, true);
-
-// Handle Enter key to blur and save
-document.addEventListener('keydown', function(e) {
-    if (!bulkEditMode) return;
-
-    const cell = e.target.closest('.editable-cell');
-    if (!cell) return;
-
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        cell.blur();
-    }
-}, true);
-
-function saveField(bookId, field, value, cell) {
-    // Show saving indicator
-    cell.style.opacity = '0.5';
-
-    // Get CSRF token from meta tag or form
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
-                      document.querySelector('input[name="csrf_token"]')?.value;
-
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-
-    if (csrfToken) {
-        headers['X-CSRFToken'] = csrfToken;
-    }
-
-    fetch(`/books/${bookId}/update-field`, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-            field: field,
-            value: value
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        cell.style.opacity = '1';
-
-        if (data.success) {
-            // Update the dataset to reflect new value
-            const datasetField = field === 'oclc_number' ? 'oclc' : field;
-            cell.closest('tr').dataset[datasetField] = value;
-
-            // Show success feedback
-            cell.style.backgroundColor = '#155724';
-            setTimeout(() => {
-                if (bulkEditMode) {
-                    cell.style.backgroundColor = '#2a2a2a';
-                } else {
-                    cell.style.backgroundColor = '';
-                }
-            }, 500);
-        } else {
-            // Show error feedback
-            cell.style.backgroundColor = '#721c24';
-            alert(`Error: ${data.error}`);
-
-            // Revert to original value
-            const datasetField = field === 'oclc_number' ? 'oclc' : field;
-            const originalValue = cell.closest('tr').dataset[datasetField];
-            cell.textContent = originalValue || '—';
-
-            setTimeout(() => {
-                if (bulkEditMode) {
-                    cell.style.backgroundColor = '#2a2a2a';
-                } else {
-                    cell.style.backgroundColor = '';
-                }
-            }, 1000);
-        }
-    })
-    .catch(error => {
-        cell.style.opacity = '1';
-        cell.style.backgroundColor = '#721c24';
-        alert('Error saving field');
-
-        // Revert to original value
-        const datasetField = field === 'oclc_number' ? 'oclc' : field;
-        const originalValue = cell.closest('tr').dataset[datasetField];
-        cell.textContent = originalValue || '—';
-
-        setTimeout(() => {
-            if (bulkEditMode) {
-                cell.style.backgroundColor = '#2a2a2a';
-            } else {
-                cell.style.backgroundColor = '';
-            }
-        }, 1000);
-    });
-}
 </script>
 {% endblock %}
