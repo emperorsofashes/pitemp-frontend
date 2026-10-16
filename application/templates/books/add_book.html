@@ -278,7 +278,7 @@
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
 // Initialize Flatpickr for date picker
-flatpickr("#date_published", {
+const datePublishedPicker = flatpickr("#date_published", {
     dateFormat: "Y-m-d",
     allowInput: true
 });
@@ -563,9 +563,9 @@ function populateForm(data) {
         document.getElementById('authors').value = data.authors.join(', ');
     }
     
-    // Populate date published
+    // Populate date published using Flatpickr's setDate method for mobile compatibility
     if (data.date_published) {
-        document.getElementById('date_published').value = data.date_published;
+        datePublishedPicker.setDate(data.date_published);
     }
     
     // Populate page count
