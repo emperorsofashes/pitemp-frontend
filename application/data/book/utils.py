@@ -56,8 +56,18 @@ def normalize_authors(authors: list[str] | str | None) -> list[str]:
                 )
                 
                 if len(parts) == 2 and all_look_like_names:
-                    # Single author in "Last, First" format - keep as single string for processing below
-                    authors = [authors]
+                    # Check if this looks like "Last, First" or "First Last, First Last"
+                    # If both parts have spaces, likely already "First Last" format (multiple authors)
+                    # If only one has space or neither has space, likely "Last, First" format
+                    first_has_space = ' ' in parts[0]
+                    second_has_space = ' ' in parts[1]
+                    
+                    if first_has_space and second_has_space:
+                        # Both have spaces - likely "First Last, First Last" (already formatted)
+                        authors = parts
+                    else:
+                        # One or none have spaces - likely "Last, First" format
+                        authors = [authors]
                 elif len(parts) == 3 and all_look_like_names:
                     # Likely a person name with suffix (e.g., "Doe, John, Jr.") - keep as-is
                     authors = [authors]
