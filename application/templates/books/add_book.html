@@ -218,38 +218,44 @@
 
                 <div class="form-group">
                     <label for="title">Title *</label>
-                    <input type="text" name="title" id="title" class="form-control bg-dark text-white border-secondary" required>
+                    <input type="text" name="title" id="title" class="form-control bg-dark text-white border-secondary" required
+                           value="{{ title or '' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="authors">Author(s)</label>
-                    <input type="text" name="authors" id="authors" class="form-control bg-dark text-white border-secondary" 
-                           placeholder="Separate multiple authors with commas">
+                    <input type="text" name="authors" id="authors" class="form-control bg-dark text-white border-secondary"
+                           placeholder="Separate multiple authors with commas"
+                           value="{{ authors or '' }}">
                     <small class="text-muted">Separate multiple authors with commas (e.g., "Jane Doe, John Smith") - optional</small>
                 </div>
 
                 <div class="form-group">
                     <label for="date_published">Date Published</label>
                     <input type="text" name="date_published" id="date_published" class="form-control bg-dark text-white border-secondary"
-                           placeholder="YYYY-MM-DD">
+                           placeholder="YYYY-MM-DD"
+                           value="{{ date_published or '' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="isbn">ISBN</label>
                     <input type="text" name="isbn" id="isbn" class="form-control bg-dark text-white border-secondary"
-                           placeholder="ISBN-10 or ISBN-13">
+                           placeholder="ISBN-10 or ISBN-13"
+                           value="{{ isbn or '' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="oclc_number">OCLC Number</label>
                     <input type="text" name="oclc_number" id="oclc_number" class="form-control bg-dark text-white border-secondary"
-                           placeholder="OCLC control number">
+                           placeholder="OCLC control number"
+                           value="{{ oclc_number or '' }}">
                 </div>
 
                 <div class="form-group">
                     <label for="page_count">Page Count</label>
                     <input type="number" name="page_count" id="page_count" class="form-control bg-dark text-white border-secondary"
-                           min="0" placeholder="Number of pages">
+                           min="0" placeholder="Number of pages"
+                           value="{{ page_count or '' }}">
                 </div>
 
                 <button type="submit" class="btn btn-success">Add Book</button>
@@ -286,6 +292,14 @@ const datePublishedPicker = flatpickr("#date_published", {
 // Auto-focus ISBN lookup field on page load for rapid barcode scanning
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('isbn_lookup').focus();
+    
+    // Restore cover preview if cover_url was passed (e.g., after duplicate error)
+    const coverUrl = document.getElementById('cover_url').value;
+    if (coverUrl) {
+        coverPreview.src = coverUrl;
+        coverPreviewContainer.style.display = 'block';
+        coverUploadSection.style.display = 'none';
+    }
 });
 
 // Search mode management

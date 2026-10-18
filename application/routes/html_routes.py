@@ -20,7 +20,7 @@ from application.constants.beer_constants import BEER_STYLES_V1, BEER_STYLES_V2,
 from application.constants.bird_constants import CARTO_API_KEY
 from application.data.beer.dao import BeerDao
 from application.data.bird.dao import BirdDao
-from application.data.book.dao import BookDao
+from application.data.book.dao import BookDao, DuplicateBookError
 from application.data.book.image_processor import ImageValidationError, process_book_cover
 from application.data.book.utils import capitalize_title
 from application.data.book.providers import (
@@ -657,14 +657,25 @@ def books_add():
                 pass
 
         # Add the book first
-        book_id = book_dao.add_book(
-            title=title,
-            authors=authors,
-            date_published=date_published,
-            isbn=isbn,
-            oclc_number=oclc_number,
-            page_count=page_count,
-        )
+        try:
+            book_id = book_dao.add_book(
+                title=title,
+                authors=authors,
+                date_published=date_published,
+                isbn=isbn,
+                oclc_number=oclc_number,
+                page_count=page_count,
+            )
+        except DuplicateBookError as e:
+            flash(str(e), "danger")
+            return render_template("books/add_book.html", 
+                                   title=title,
+                                   authors=authors_str,
+                                   date_published=date_published_str,
+                                   isbn=isbn,
+                                   oclc_number=oclc_number,
+                                   page_count=page_count_str,
+                                   cover_url=cover_url)
 
         # Handle cover image upload
         r2_storage = _get_r2_storage()
@@ -776,16 +787,31 @@ def books_edit_book(book_id):
             except ValueError:
                 pass
 
-        book_dao.update_book(
-            book_id=book_id,
-            title=title,
-            authors=authors,
-            date_published=date_published,
-            isbn=isbn,
-            oclc_number=oclc_number,
-            page_count=page_count,
-        )
-        return redirect(f"/books/{book_id}")
+        try:
+            book_dao.update_book(
+                book_id=book_id,
+                title=title,
+                authors=authors,
+                date_published=date_published,
+                isbn=isbn,
+                oclc_number=oclc_number,
+                page_count=page_count,
+            )
+            return redirect(f"/books/{book_id}")
+        except DuplicateBookError as e:
+            flash(str(e), "danger")
+            # Create a book object with the submitted values to preserve form data
+            from application.data.book.book import Book
+            book = Book(
+                id=book_id,
+                title=title,
+                authors=authors,
+                date_published=date_published,
+                isbn=isbn,
+                oclc_number=oclc_number,
+                page_count=page_count,
+            )
+            return render_template("books/edit_book.html", book=book)
 
     if not session.get("authenticated"):
         return redirect(url_for(
@@ -873,6 +899,9 @@ def books_update_field(book_id):
         )
 
         return jsonify({"success": True})
+    except DuplicateBookError as e:
+        LOG.warning(f"Duplicate book error updating field {field} for book {book_id}: {e}")
+        return jsonify({"success": False, "error": str(e)}), 400
     except Exception as e:
         LOG.error(f"Error updating field {field} for book {book_id}: {e}")
         return jsonify({"success": False, "error": str(e)}), 500

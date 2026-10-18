@@ -12,6 +12,11 @@ from pymongo.database import Database
 from application.constants.book_constants import BOOKS_CACHE_TTL, BOOKS_COLLECTION_NAME, BOOKS_DB_NAME
 from application.data.book.book import Book
 
+
+class DuplicateBookError(Exception):
+    """Raised when attempting to add a duplicate book."""
+    pass
+
 LOG = logging.getLogger(__name__)
 ISBN_LOOKUP_CACHE_TTL = timedelta(days=30)  # Cache ISBN lookups for 30 days
 BOOK_SEARCH_CACHE_TTL = timedelta(days=7)  # Cache book searches for 7 days
@@ -112,6 +117,53 @@ class BookDao:
         except Exception:
             return None
 
+    def check_duplicate(self, title: str, isbn: str | None = None, oclc_number: str | None = None, exclude_id: str | None = None) -> tuple[bool, str]:
+        """Check if a book with the same title, ISBN, or OCLC already exists.
+        
+        Args:
+            title: The book title to check
+            isbn: The ISBN to check (optional)
+            oclc_number: The OCLC number to check (optional)
+            exclude_id: Book ID to exclude from duplicate check (for updates)
+        
+        Returns:
+            Tuple of (is_duplicate, error_message)
+        """
+        query = {"$or": []}
+        
+        # Check title (case-insensitive)
+        if title:
+            query["$or"].append({"title": {"$regex": f"^{title}$", "$options": "i"}})
+        
+        # Check ISBN (if provided)
+        if isbn:
+            query["$or"].append({"isbn": isbn})
+        
+        # Check OCLC (if provided)
+        if oclc_number:
+            query["$or"].append({"oclc_number": oclc_number})
+        
+        # Exclude the current book when updating
+        if exclude_id:
+            query["_id"] = {"$ne": ObjectId(exclude_id)}
+        
+        # If no fields to check, return False
+        if not query["$or"]:
+            return False, ""
+        
+        existing = self.books_collection.find_one(query)
+        if existing:
+            existing_book = Book.from_mongo(existing)
+            # Determine which field matched
+            if isbn and existing_book.isbn == isbn:
+                return True, f"A book with ISBN '{isbn}' already exists"
+            elif oclc_number and existing_book.oclc_number == oclc_number:
+                return True, f"A book with OCLC number '{oclc_number}' already exists"
+            elif title.lower() == existing_book.title.lower():
+                return True, f"A book with title '{title}' already exists"
+        
+        return False, ""
+
     def add_book(
         self,
         title: str,
@@ -122,6 +174,11 @@ class BookDao:
         page_count: int | None = None,
     ) -> str:
         """Add a book to the collection."""
+        # Check for duplicates before adding
+        is_duplicate, error_message = self.check_duplicate(title, isbn, oclc_number)
+        if is_duplicate:
+            raise DuplicateBookError(error_message)
+        
         document = {
             "title": title,
             "authors": authors,
@@ -150,6 +207,11 @@ class BookDao:
     ) -> bool:
         """Update a book in the collection."""
         try:
+            # Check for duplicates before updating (exclude current book)
+            is_duplicate, error_message = self.check_duplicate(title, isbn, oclc_number, exclude_id=book_id)
+            if is_duplicate:
+                raise DuplicateBookError(error_message)
+            
             document = {
                 "title": title,
                 "authors": authors,
@@ -165,6 +227,8 @@ class BookDao:
             self._retry_cache_delete_async("all_books_page_count_-1")
             self._retry_cache_delete_async(f"book_{book_id}")
             return result.modified_count > 0
+        except DuplicateBookError:
+            raise
         except Exception:
             return False
 
