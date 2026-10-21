@@ -273,8 +273,10 @@
                     <small class="text-muted">Optional - Add any notes or comments about this book</small>
                 </div>
 
-                <button type="submit" class="btn btn-success">Add Book</button>
-                <a href="/books" class="btn btn-secondary">Cancel</a>
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-success">Add Book</button>
+                    <a href="/books" class="btn btn-secondary" id="cancel-btn" onclick="return confirmCancel()">Cancel</a>
+                </div>
             </form>
         </div>
     </div>
@@ -847,9 +849,9 @@ function startScanner() {
 // Stop scanner and cleanup
 function stopScanner() {
     if (!isScanning || !html5QrCode) return;
-    
+
     isScanning = false;
-    
+
     html5QrCode.stop().then(() => {
         html5QrCode.clear();
         html5QrCode = null;
@@ -857,6 +859,26 @@ function stopScanner() {
         console.error('Error stopping scanner:', err);
         html5QrCode = null;
     });
+}
+
+// Check if any form fields have been filled and confirm before canceling
+function confirmCancel() {
+    const form = document.querySelector('form');
+    const inputs = form.querySelectorAll('input[type="text"], input[type="number"], textarea');
+    let hasValues = false;
+
+    for (const input of inputs) {
+        if (input.value && input.value.trim() !== '') {
+            hasValues = true;
+            break;
+        }
+    }
+
+    if (hasValues) {
+        return confirm('You have unsaved changes. Are you sure you want to cancel?');
+    }
+
+    return true;
 }
 
 // Cleanup on page unload
