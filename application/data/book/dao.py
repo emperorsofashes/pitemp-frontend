@@ -255,6 +255,11 @@ class BookDao:
                 {"$set": {"cover_uploaded_at": datetime.now(), "cover_version": new_version}}
             )
             self._retry_cache_delete_async(f"book_{book_id}")
+            # Invalidate book list caches since cover_version changed
+            self._retry_cache_delete_async("all_books_title_-1")
+            self._retry_cache_delete_async("all_books_date_published_-1")
+            self._retry_cache_delete_async("all_books_date_added_-1")
+            self._retry_cache_delete_async("all_books_page_count_-1")
             return result.modified_count > 0
         except Exception:
             return False
