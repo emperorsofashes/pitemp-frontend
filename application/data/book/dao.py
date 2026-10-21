@@ -180,7 +180,7 @@ class BookDao:
         is_duplicate, error_message = self.check_duplicate(title, isbn, oclc_number)
         if is_duplicate:
             raise DuplicateBookError(error_message)
-        
+
         document = {
             "title": title,
             "authors": authors,
@@ -191,6 +191,8 @@ class BookDao:
             "date_added": datetime.now(),
             "purchase_price": purchase_price,
             "notes": notes,
+            "cover_uploaded_at": None,
+            "cover_version": 0,
         }
         result = self.books_collection.insert_one(document)
         self._retry_cache_delete_async("all_books_title_-1")
@@ -217,7 +219,7 @@ class BookDao:
             is_duplicate, error_message = self.check_duplicate(title, isbn, oclc_number, exclude_id=book_id)
             if is_duplicate:
                 raise DuplicateBookError(error_message)
-            
+
             document = {
                 "title": title,
                 "authors": authors,
@@ -237,6 +239,40 @@ class BookDao:
             return result.modified_count > 0
         except DuplicateBookError:
             raise
+        except Exception:
+            return False
+
+    def set_cover_metadata(self, book_id: str) -> bool:
+        """Mark a cover as uploaded by setting cover_uploaded_at and incrementing cover_version."""
+        try:
+            book = self.get_book(book_id)
+            if not book:
+                return False
+
+            new_version = book.cover_version + 1
+            result = self.books_collection.update_one(
+                {"_id": ObjectId(book_id)},
+                {"$set": {"cover_uploaded_at": datetime.now(), "cover_version": new_version}}
+            )
+            self._retry_cache_delete_async(f"book_{book_id}")
+            return result.modified_count > 0
+        except Exception:
+            return False
+
+    def clear_cover_metadata(self, book_id: str) -> bool:
+        """Mark a cover as deleted by setting cover_uploaded_at to None and incrementing cover_version."""
+        try:
+            book = self.get_book(book_id)
+            if not book:
+                return False
+
+            new_version = book.cover_version + 1
+            result = self.books_collection.update_one(
+                {"_id": ObjectId(book_id)},
+                {"$set": {"cover_uploaded_at": None, "cover_version": new_version}}
+            )
+            self._retry_cache_delete_async(f"book_{book_id}")
+            return result.modified_count > 0
         except Exception:
             return False
 

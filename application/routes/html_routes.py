@@ -1098,15 +1098,34 @@ def books_delete_cover(book_id):
         return redirect("/books")
 
     r2_storage = _get_r2_storage()
-    if r2_storage:
-        try:
-            r2_storage.delete_cover_and_thumb(book.cover_key)
-            flash("Cover image deleted successfully.", "success")
-        except Exception as e:
-            LOG.error(f"Failed to delete cover from R2 for book {book_id}: {e}")
-            flash("Failed to delete cover image.", "danger")
-    else:
+    if r2_storage is None:
         flash("R2 storage not configured.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Delete from R2 first
+    r2_success = False
+    try:
+        r2_success = r2_storage.delete_cover_and_thumb(book.cover_key)
+    except Exception as e:
+        LOG.error(f"Failed to delete cover from R2 for book {book_id}: {e}")
+        flash("Failed to delete cover image from storage.", "danger")
+        return redirect(f"/books/edit/{book_id}")
+
+    # Update MongoDB to mark cover as deleted
+    mongo_success = False
+    try:
+        mongo_success = book_dao.clear_cover_metadata(book_id)
+    except Exception as e:
+        LOG.error(f"Failed to clear cover metadata in MongoDB for book {book_id}: {e}")
+
+    # Handle partial failures
+    if r2_success and mongo_success:
+        flash("Cover image deleted successfully.", "success")
+    elif r2_success and not mongo_success:
+        LOG.error(f"R2 deletion succeeded but MongoDB update failed for book {book_id}. Cover may appear to still exist in UI.")
+        flash("Cover deleted from storage but database update failed. Please contact support.", "warning")
+    else:
+        flash("Failed to delete cover image.", "danger")
 
     return redirect(f"/books/edit/{book_id}")
 
@@ -1538,15 +1557,15 @@ def _process_and_upload_cover(
 ) -> bool:
     """
     Process image bytes and upload to R2 as cover images.
-    
+
     Shared helper for both file upload and URL-based import.
-    
+
     Args:
         book_id: The book ID
         image_bytes: Raw image bytes
         book_dao: Book DAO instance
         r2_storage: R2 storage instance
-        
+
     Returns:
         True if successful, False otherwise
     """
@@ -1581,7 +1600,18 @@ def _process_and_upload_cover(
                 LOG.error(f"Error cleaning up R2 key '{key}': {cleanup_err}")
         raise RuntimeError("Failed to upload cover images to Cloudflare R2.")
 
-    # Purge CDN cache for the newly uploaded images
+    # Update MongoDB to mark cover as uploaded and increment version
+    if not book_dao.set_cover_metadata(book_id):
+        LOG.error(f"Failed to update cover metadata in MongoDB for book {book_id}")
+        # Rollback R2 upload since MongoDB update failed
+        for key in uploaded_keys:
+            try:
+                r2_storage.delete_file(key)
+            except Exception as cleanup_err:
+                LOG.error(f"Error cleaning up R2 key '{key}' after MongoDB failure: {cleanup_err}")
+        raise RuntimeError("Failed to update cover metadata in database.")
+
+    # Purge CDN cache for the newly uploaded images (optional, versioned URLs are primary invalidation)
     urls_to_purge = []
     try:
         cover_url = r2_storage.get_public_url(new_cover_key)

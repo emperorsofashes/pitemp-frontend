@@ -175,6 +175,8 @@ def create_flask_app() -> Flask:
         thumb_key = derive_thumb_key(cover_key)
         return cover_url_filter(thumb_key)
 
+    # Note: These filters are deprecated. Use book.cover_url and book.thumb_url properties instead
+    # which include version parameters for cache invalidation.
     app.jinja_env.filters["cover_url"] = cover_url_filter
     app.jinja_env.filters["thumb_url"] = thumb_url_filter
 

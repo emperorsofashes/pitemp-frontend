@@ -1,4 +1,5 @@
 import io
+from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -617,8 +618,30 @@ class TestCoverRoutes:
         )
 
     def test_mongodb_failure_after_r2_upload_cleans_up(self, client, app, mock_storage):
-        """Test removed - MongoDB update no longer needed since cover_key is derived."""
-        pass
+        """If MongoDB metadata update fails after R2 upload, R2 objects are cleaned up."""
+        app.config["WTF_CSRF_ENABLED"] = False
+        book_dao = app.config[BOOKS_DATABASE_CONFIG_KEY]
+        book_dao.get_book.return_value = Book(
+            id="b1",
+            title="Test Book",
+            authors=["Author"],
+        )
+        # Simulate MongoDB update failure
+        book_dao.set_cover_metadata.return_value = False
+
+        with client.session_transaction() as sess:
+            sess["authenticated"] = True
+
+        response = client.post(
+            "/books/b1/cover",
+            data={"cover_image": (io.BytesIO(_create_test_image()), "test.jpg")},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert b"Failed to update cover metadata in database" in response.data
+
+        # R2 upload should be cleaned up after MongoDB failure
+        assert mock_storage.s3_client.delete_object.call_count == 2
 
     def test_delete_cover_operation(self, client, app, mock_storage):
         """Deleting a cover removes R2 objects using derived cover_key."""
@@ -666,6 +689,63 @@ class TestBookModelAndDao:
         assert book.cover_key == "covers/507f1f77bcf86cd799439011.webp"
         assert book.thumb_key == "covers/507f1f77bcf86cd799439011_thumb.webp"
 
+    def test_book_model_has_cover_property(self):
+        """has_cover returns True when cover_uploaded_at is set, False otherwise."""
+        # Book without cover
+        book_no_cover = Book(id="123", title="No Cover", authors=["Author"])
+        assert book_no_cover.has_cover is False
+        assert book_no_cover.cover_url is None
+        assert book_no_cover.thumb_url is None
+
+        # Book with cover
+        book_with_cover = Book(
+            id="123",
+            title="With Cover",
+            authors=["Author"],
+            cover_uploaded_at=datetime(2024, 1, 1, 12, 0, 0),
+            cover_version=1
+        )
+        assert book_with_cover.has_cover is True
+
+    def test_book_model_versioned_urls(self):
+        """cover_url and thumb_url include version parameter when cover exists."""
+        with patch.dict("os.environ", {"BOOK_IMAGE_HOST": "https://books.example.com"}):
+            book = Book(
+                id="123",
+                title="Version Test",
+                authors=["Author"],
+                cover_uploaded_at=datetime(2024, 1, 1, 12, 0, 0),
+                cover_version=3
+            )
+            assert book.cover_url == "https://books.example.com/covers/123.webp?v=3"
+            assert book.thumb_url == "https://books.example.com/covers/123_thumb.webp?v=3"
+
+    def test_book_model_legacy_document_loading(self):
+        """Legacy documents without cover metadata load safely with defaults."""
+        doc = {
+            "_id": ObjectId("507f1f77bcf86cd799439011"),
+            "title": "Legacy Book",
+            "authors": ["Author"],
+        }
+        book = Book.from_mongo(doc)
+        assert book.cover_uploaded_at is None
+        assert book.cover_version == 0
+        assert book.has_cover is False
+
+    def test_book_model_document_with_cover_metadata(self):
+        """Documents with cover metadata load correctly."""
+        doc = {
+            "_id": ObjectId("507f1f77bcf86cd799439011"),
+            "title": "Modern Book",
+            "authors": ["Author"],
+            "cover_uploaded_at": datetime(2024, 1, 1, 12, 0, 0),
+            "cover_version": 2,
+        }
+        book = Book.from_mongo(doc)
+        assert book.cover_uploaded_at == datetime(2024, 1, 1, 12, 0, 0)
+        assert book.cover_version == 2
+        assert book.has_cover is True
+
     def test_book_image_host_properties(self):
         """Test cover_url and thumb_url properties using BOOK_IMAGE_HOST env var."""
         with patch.dict("os.environ", {"BOOK_IMAGE_HOST": "https://books.example.com"}):
@@ -673,9 +753,11 @@ class TestBookModelAndDao:
                 id="123",
                 title="Host Test",
                 authors=["Author"],
+                cover_uploaded_at=datetime(2024, 1, 1, 12, 0, 0),
+                cover_version=1
             )
-            assert book.cover_url == "https://books.example.com/covers/123.webp"
-            assert book.thumb_url == "https://books.example.com/covers/123_thumb.webp"
+            assert book.cover_url == "https://books.example.com/covers/123.webp?v=1"
+            assert book.thumb_url == "https://books.example.com/covers/123_thumb.webp?v=1"
 
     def test_book_image_host_fallback_r2_public_url(self):
         """Test cover_url and thumb_url fall back to R2_PUBLIC_URL if BOOK_IMAGE_HOST is not set."""
@@ -686,6 +768,8 @@ class TestBookModelAndDao:
                     id="123",
                     title="Fallback Test",
                     authors=["Author"],
+                    cover_uploaded_at=datetime(2024, 1, 1, 12, 0, 0),
+                    cover_version=1
                 )
-                assert book.cover_url == "https://r2.example.com/covers/123.webp"
-                assert book.thumb_url == "https://r2.example.com/covers/123_thumb.webp"
+                assert book.cover_url == "https://r2.example.com/covers/123.webp?v=1"
+                assert book.thumb_url == "https://r2.example.com/covers/123_thumb.webp?v=1"
