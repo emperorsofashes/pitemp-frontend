@@ -31,6 +31,8 @@
                 <option value="date_published_asc">Date Published (Oldest First)</option>
                 <option value="page_count_desc">Page Count (Highest First)</option>
                 <option value="page_count_asc">Page Count (Lowest First)</option>
+                <option value="purchase_price_desc">Purchase Price (Highest First)</option>
+                <option value="purchase_price_asc">Purchase Price (Lowest First)</option>
             </select>
         </div>
     </div>
@@ -54,6 +56,7 @@
                 <th>Author(s)</th>
                 <th>Date Published</th>
                 <th>Page Count</th>
+                <th>Purchase Price</th>
                 <th>Date Added</th>
                 <th>ISBN / OCLC</th>
                 {% if edit_mode %}
@@ -63,7 +66,7 @@
         </thead>
         <tbody id="books-body">
             {% for book in books %}
-            <tr data-book-id="{{ book.id }}" data-title="{{ book.title }}" data-authors="{{ book.authors|join(', ') if book.authors else '' }}" data-date-published="{{ book.date_published.strftime('%Y-%m-%d') if book.date_published else '' }}" data-page-count="{{ book.page_count or 0 }}" data-date-added="{{ book.date_added.isoformat() if book.date_added else '' }}" data-isbn="{{ book.isbn or '' }}" data-oclc="{{ book.oclc_number or '' }}">
+            <tr data-book-id="{{ book.id }}" data-title="{{ book.title }}" data-authors="{{ book.authors|join(', ') if book.authors else '' }}" data-date-published="{{ book.date_published.strftime('%Y-%m-%d') if book.date_published else '' }}" data-page-count="{{ book.page_count or 0 }}" data-purchase-price="{{ book.purchase_price or 0 }}" data-date-added="{{ book.date_added.isoformat() if book.date_added else '' }}" data-isbn="{{ book.isbn or '' }}" data-oclc="{{ book.oclc_number or '' }}">
                 <td class="text-center" style="vertical-align: middle;">
                     <a href="/books/{{ book.id }}">
                         <img src="{{ book.cover_key | thumb_url }}" alt="{{ book.title }} thumbnail" class="rounded" style="max-height: 200px; max-width: 150px; object-fit: contain;" loading="lazy" onerror="this.style.display='none'">
@@ -73,6 +76,7 @@
                 <td class="editable-cell" data-field="authors">{{ book.authors|join(', ') if book.authors else '—' }}</td>
                 <td class="editable-cell" data-field="date_published" title="{{ book.date_published.strftime('%Y-%m-%d') if book.date_published else '' }}">{{ book.date_published.strftime('%Y') if book.date_published else '—' }}</td>
                 <td class="editable-cell" data-field="page_count">{{ book.page_count if book.page_count else '—' }}</td>
+                <td class="editable-cell" data-field="purchase_price">{{ '$' + "%.2f" | format(book.purchase_price) if book.purchase_price else '—' }}</td>
                 <td>{{ book.date_added.strftime('%Y-%m-%d') if book.date_added else '—' }}</td>
                 <td class="editable-cell">
                     <div class="isbn-oclc-cell">
@@ -130,6 +134,8 @@ function sortBooks(sortValue) {
         const bDatePublished = b.dataset.datePublished || '1970-01-01';
         const aPageCount = parseInt(a.dataset.pageCount) || 0;
         const bPageCount = parseInt(b.dataset.pageCount) || 0;
+        const aPurchasePrice = parseFloat(a.dataset.purchasePrice) || 0;
+        const bPurchasePrice = parseFloat(b.dataset.purchasePrice) || 0;
         const aDateAdded = a.dataset.dateAdded || '1970-01-01';
         const bDateAdded = b.dataset.dateAdded || '1970-01-01';
         
@@ -159,6 +165,12 @@ function sortBooks(sortValue) {
                 return aTitle.localeCompare(bTitle);
             case 'page_count_asc':
                 if (aPageCount !== bPageCount) return aPageCount - bPageCount;
+                return aTitle.localeCompare(bTitle);
+            case 'purchase_price_desc':
+                if (bPurchasePrice !== aPurchasePrice) return bPurchasePrice - aPurchasePrice;
+                return aTitle.localeCompare(bTitle);
+            case 'purchase_price_asc':
+                if (aPurchasePrice !== bPurchasePrice) return aPurchasePrice - bPurchasePrice;
                 return aTitle.localeCompare(bTitle);
             default:
                 return 0;

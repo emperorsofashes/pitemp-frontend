@@ -15,6 +15,8 @@ class Book:
     oclc_number: str | None = None
     page_count: int | None = None
     date_added: datetime | None = None
+    purchase_price: float | None = None
+    notes: str | None = None
 
     @property
     def cover_key(self) -> str:
@@ -53,4 +55,6 @@ class Book:
             oclc_number=doc.get("oclc_number"),
             page_count=doc.get("page_count"),
             date_added=doc.get("date_added"),
+            purchase_price=doc.get("purchase_price"),
+            notes=doc.get("notes"),
         )

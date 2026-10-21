@@ -625,6 +625,8 @@ def books_add():
         isbn = request.form.get("isbn")
         oclc_number = request.form.get("oclc_number")
         page_count_str = request.form.get("page_count")
+        purchase_price_str = request.form.get("purchase_price")
+        notes = request.form.get("notes")
         cover_url = request.form.get("cover_url")
 
         # Parse authors (comma-separated) - optional field
@@ -656,6 +658,14 @@ def books_add():
             except ValueError:
                 pass
 
+        # Parse purchase price
+        purchase_price = None
+        if purchase_price_str:
+            try:
+                purchase_price = float(purchase_price_str)
+            except ValueError:
+                pass
+
         # Add the book first
         try:
             book_id = book_dao.add_book(
@@ -665,16 +675,20 @@ def books_add():
                 isbn=isbn,
                 oclc_number=oclc_number,
                 page_count=page_count,
+                purchase_price=purchase_price,
+                notes=notes,
             )
         except DuplicateBookError as e:
             flash(str(e), "danger")
-            return render_template("books/add_book.html", 
+            return render_template("books/add_book.html",
                                    title=title,
                                    authors=authors_str,
                                    date_published=date_published_str,
                                    isbn=isbn,
                                    oclc_number=oclc_number,
                                    page_count=page_count_str,
+                                   purchase_price=purchase_price_str,
+                                   notes=notes,
                                    cover_url=cover_url)
 
         # Handle cover image upload
@@ -759,6 +773,8 @@ def books_edit_book(book_id):
         isbn = request.form.get("isbn")
         oclc_number = request.form.get("oclc_number")
         page_count_str = request.form.get("page_count")
+        purchase_price_str = request.form.get("purchase_price")
+        notes = request.form.get("notes")
 
         # Parse authors (comma-separated) - optional field
         authors = []
@@ -787,6 +803,14 @@ def books_edit_book(book_id):
             except ValueError:
                 pass
 
+        # Parse purchase price
+        purchase_price = None
+        if purchase_price_str:
+            try:
+                purchase_price = float(purchase_price_str)
+            except ValueError:
+                pass
+
         try:
             book_dao.update_book(
                 book_id=book_id,
@@ -796,6 +820,8 @@ def books_edit_book(book_id):
                 isbn=isbn,
                 oclc_number=oclc_number,
                 page_count=page_count,
+                purchase_price=purchase_price,
+                notes=notes,
             )
             return redirect(f"/books/{book_id}")
         except DuplicateBookError as e:
@@ -810,6 +836,8 @@ def books_edit_book(book_id):
                 isbn=isbn,
                 oclc_number=oclc_number,
                 page_count=page_count,
+                purchase_price=purchase_price,
+                notes=notes,
             )
             return render_template("books/edit_book.html", book=book)
 
@@ -884,6 +912,19 @@ def books_update_field(book_id):
                 book.oclc_number = value.strip().replace("-", "").replace(" ", "")
             else:
                 book.oclc_number = None
+        elif field == "purchase_price":
+            if value and value.strip():
+                try:
+                    purchase_price = float(value.strip())
+                    if purchase_price < 0:
+                        return jsonify({"success": False, "error": "Purchase price must be non-negative"}), 400
+                    book.purchase_price = purchase_price
+                except ValueError:
+                    return jsonify({"success": False, "error": "Purchase price must be a number"}), 400
+            else:
+                book.purchase_price = None
+        elif field == "notes":
+            book.notes = value if value else None
         else:
             return jsonify({"success": False, "error": f"Invalid field: {field}"}), 400
 
@@ -896,6 +937,8 @@ def books_update_field(book_id):
             isbn=book.isbn,
             oclc_number=book.oclc_number,
             page_count=book.page_count,
+            purchase_price=book.purchase_price,
+            notes=book.notes,
         )
 
         return jsonify({"success": True})

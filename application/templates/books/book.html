@@ -138,6 +138,14 @@
                             <td>{{ book.page_count if book.page_count else '—' }}</td>
                         </tr>
                         <tr>
+                            <th scope="row">Purchase Price</th>
+                            <td>{{ '$' + "%.2f" | format(book.purchase_price) if book.purchase_price else '—' }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Notes</th>
+                            <td>{{ book.notes if book.notes else '—' }}</td>
+                        </tr>
+                        <tr>
                             <th scope="row">Date Added</th>
                             <td>{{ book.date_added.strftime('%Y-%m-%d') if book.date_added else '—' }}</td>
                         </tr>

@@ -172,6 +172,8 @@ class BookDao:
         isbn: str | None = None,
         oclc_number: str | None = None,
         page_count: int | None = None,
+        purchase_price: float | None = None,
+        notes: str | None = None,
     ) -> str:
         """Add a book to the collection."""
         # Check for duplicates before adding
@@ -187,6 +189,8 @@ class BookDao:
             "oclc_number": oclc_number,
             "page_count": page_count,
             "date_added": datetime.now(),
+            "purchase_price": purchase_price,
+            "notes": notes,
         }
         result = self.books_collection.insert_one(document)
         self._retry_cache_delete_async("all_books_title_-1")
@@ -204,6 +208,8 @@ class BookDao:
         isbn: str | None = None,
         oclc_number: str | None = None,
         page_count: int | None = None,
+        purchase_price: float | None = None,
+        notes: str | None = None,
     ) -> bool:
         """Update a book in the collection."""
         try:
@@ -219,6 +225,8 @@ class BookDao:
                 "isbn": isbn,
                 "oclc_number": oclc_number,
                 "page_count": page_count,
+                "purchase_price": purchase_price,
+                "notes": notes,
             }
             result = self.books_collection.update_one({"_id": ObjectId(book_id)}, {"$set": document})
             self._retry_cache_delete_async("all_books_title_-1")
