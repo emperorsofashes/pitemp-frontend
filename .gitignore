@@ -6,3 +6,4 @@ __pycache__/
 /ssl/
 *.env
 CLAUDE.md
+scripts/reconcile_book_covers.py
