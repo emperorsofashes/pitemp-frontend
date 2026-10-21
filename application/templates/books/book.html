@@ -148,10 +148,6 @@
                             <td>{{ '$' + "%.2f" | format(book.purchase_price) if book.purchase_price else '—' }}</td>
                         </tr>
                         <tr>
-                            <th scope="row">Notes</th>
-                            <td>{{ book.notes if book.notes else '—' }}</td>
-                        </tr>
-                        <tr>
                             <th scope="row">Date Added</th>
                             <td>{{ book.date_added.strftime('%Y-%m-%d') if book.date_added else '—' }}</td>
                         </tr>
@@ -173,6 +169,16 @@
             </div>
         </div>
     </div>
+
+    {% if book.notes %}
+    <!-- Notes Card -->
+    <div class="card bg-dark text-white mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Notes</h5>
+        </div>
+        <div class="card-body" style="white-space: pre-wrap;">{{ book.notes }}</div>
+    </div>
+    {% endif %}
 
     <!-- Actions Card -->
     <div class="card bg-dark text-white mb-4">

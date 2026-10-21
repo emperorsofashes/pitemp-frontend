@@ -159,6 +159,14 @@ def create_flask_app() -> Flask:
     # Allow the use of the bytes_to_display method in Jinja
     app.jinja_env.filters["bytes_to_display"] = bytes_to_display
 
+    # Add nl2br filter to preserve new lines in text
+    def nl2br_filter(text: str | None) -> str:
+        if not text:
+            return ""
+        return text.replace("\n", "<br>")
+
+    app.jinja_env.filters["nl2br"] = nl2br_filter
+
     # Add Jinja filters for cover and thumbnail URLs
     def cover_url_filter(cover_key: str | None) -> str:
         if not cover_key:
