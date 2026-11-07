@@ -49,7 +49,6 @@
         <strong>Bulk Edit Mode:</strong> Click on any field to edit it. Press Enter to save changes.
     </div>
 
-    {% if books %}
     <table class="table table-striped table-dark">
         <thead>
             <tr>
@@ -97,8 +96,8 @@
             {% endfor %}
         </tbody>
     </table>
-    {% else %}
-    <p>No books in your collection yet. <a href="/books/add">Add your first book!</a></p>
+    {% if not books %}
+    <p id="no-books-message">Loading books...</p>
     {% endif %}
 </div>
 
@@ -106,10 +105,28 @@
 let allBooksLoaded = false;
 
 function parseSortValue(sortValue) {
-    const [field, order] = sortValue.split('_');
-    const sortField = field === 'purchase_price' ? 'purchase_price' : field;
+    // Handle multi-word field names like page_count and purchase_price
+    let field, order;
+    if (sortValue.startsWith('page_count_')) {
+        field = 'page_count';
+        order = sortValue.replace('page_count_', '');
+    } else if (sortValue.startsWith('purchase_price_')) {
+        field = 'purchase_price';
+        order = sortValue.replace('purchase_price_', '');
+    } else if (sortValue.startsWith('date_published_')) {
+        field = 'date_published';
+        order = sortValue.replace('date_published_', '');
+    } else if (sortValue.startsWith('date_added_')) {
+        field = 'date_added';
+        order = sortValue.replace('date_added_', '');
+    } else {
+        // For single-word fields like title
+        const parts = sortValue.split('_');
+        field = parts[0];
+        order = parts[1];
+    }
     const sortOrder = order === 'asc' ? 1 : -1;
-    return { sortField, sortOrder };
+    return { sortField: field, sortOrder };
 }
 
 function sortBooks(sortValue) {
@@ -261,28 +278,41 @@ async function fetchSortedBooks(sortValue) {
     const { sortField, sortOrder } = parseSortValue(sortValue);
     
     try {
-        const response = await fetch(`/books/all?sort_by=${sortField}&sort_order=${sortOrder}`);
+        // If all books are loaded, fetch all. Otherwise, fetch only 20
+        const limit = allBooksLoaded ? null : 20;
+        const url = limit 
+            ? `/books/all?sort_by=${sortField}&sort_order=${sortOrder}&limit=${limit}`
+            : `/books/all?sort_by=${sortField}&sort_order=${sortOrder}`;
+        
+        const response = await fetch(url);
         const data = await response.json();
         
+        const tbody = document.getElementById('books-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
         if (data.books && data.books.length > 0) {
-            const tbody = document.getElementById('books-body');
-            tbody.innerHTML = '';
-            
-            const booksToShow = allBooksLoaded ? data.books : data.books.slice(0, 20);
-            
-            booksToShow.forEach(book => {
+            data.books.forEach(book => {
                 tbody.insertAdjacentHTML('beforeend', createBookRow(book));
             });
             
             // Update total count display
             const totalDisplay = document.querySelector('.mb-3');
             if (totalDisplay) {
-                const showingCount = allBooksLoaded ? data.books.length : Math.min(20, data.books.length);
-                totalDisplay.textContent = `Total: ${data.books.length} books (showing ${showingCount})`;
+                const totalCount = data.total_count || data.books.length;
+                const showingCount = data.books.length;
+                totalDisplay.textContent = `Total: ${totalCount} books (showing ${showingCount})`;
             }
             
             // Re-initialize editable cells for new rows
             initializeEditableCells();
+        }
+        
+        // Hide "Loading books..." message
+        const noBooksMessage = document.getElementById('no-books-message');
+        if (noBooksMessage) {
+            noBooksMessage.style.display = 'none';
         }
     } catch (error) {
         console.error('Error fetching sorted books:', error);
@@ -296,8 +326,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedSort = localStorage.getItem('booksSort');
     const sortValue = savedSort || 'date_added_desc';
     document.getElementById('sort-select').value = sortValue;
-    sortBooks(sortValue);
-
+    
+    // Always fetch sorted books from API to ensure correct sorting
+    fetchSortedBooks(sortValue);
+    
     // Initialize editable cells
     initializeEditableCells();
     

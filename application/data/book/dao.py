@@ -82,10 +82,12 @@ class BookDao:
 
     def get_all_books(self, sort_by: str = "date_added", sort_order: int = -1, limit: int | None = None, offset: int = 0) -> list[Book]:
         """Get books with optional sorting and pagination."""
-        cache_key = f"all_books_{sort_by}_{sort_order}_{limit}_{offset}"
-        cached = self._get_cached(cache_key)
-        if cached is not None:
-            return cached
+        # Don't cache when limit is set to avoid serving wrong data for different limits
+        if limit is None:
+            cache_key = f"all_books_{sort_by}_{sort_order}"
+            cached = self._get_cached(cache_key)
+            if cached is not None:
+                return cached
 
         # Determine sort field
         sort_field = "date_added"
@@ -104,7 +106,10 @@ class BookDao:
         if limit:
             query = query.limit(limit)
         books = [Book.from_mongo(doc) for doc in query]
-        self._set_cached(cache_key, books)
+        
+        # Only cache when no limit is set
+        if limit is None:
+            self._set_cached(cache_key, books)
         return books
 
     def get_book(self, book_id: str) -> Book | None:

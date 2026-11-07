@@ -563,9 +563,9 @@ def books_index():
     if book_dao is None:
         return render_template("books/not_configured.html")
 
-    books = book_dao.get_all_books(limit=20)
+    # Return empty list - frontend will fetch books via API
     total_count = book_dao.get_num_total_books()
-    return render_template("books/index.html", books=books, edit_mode=False, total_count=total_count)
+    return render_template("books/index.html", books=[], edit_mode=False, total_count=total_count)
 
 
 @HTML_BLUEPRINT.route("/books/edit")
@@ -580,9 +580,9 @@ def books_edit():
             next=request.full_path.rstrip("?")
         ))
 
-    books = book_dao.get_all_books(limit=20)
+    # Return empty list - frontend will fetch books via API
     total_count = book_dao.get_num_total_books()
-    return render_template("books/index.html", books=books, edit_mode=True, total_count=total_count)
+    return render_template("books/index.html", books=[], edit_mode=True, total_count=total_count)
 
 
 @HTML_BLUEPRINT.route("/books/bulk-edit")
@@ -597,9 +597,9 @@ def books_bulk_edit():
             next=request.full_path.rstrip("?")
         ))
 
-    books = book_dao.get_all_books(limit=20)
+    # Return empty list - frontend will fetch books via API
     total_count = book_dao.get_num_total_books()
-    return render_template("books/bulk_edit.html", books=books, total_count=total_count)
+    return render_template("books/bulk_edit.html", books=[], total_count=total_count)
 
 
 @HTML_BLUEPRINT.route("/books/<book_id>")
@@ -859,17 +859,21 @@ def books_edit_book(book_id):
 
 @HTML_BLUEPRINT.route("/books/all")
 def books_all():
-    """API endpoint to fetch all books as JSON for async loading."""
+    """API endpoint to fetch books as JSON for async loading. Supports limit/offset for pagination."""
     book_dao = _get_books_dao()
     if book_dao is None:
         return jsonify({"books": [], "error": "Database not configured"}), 500
 
     sort_by = request.args.get('sort_by', 'date_added')
     sort_order = int(request.args.get('sort_order', -1))
+    limit = request.args.get('limit', type=int)
+    offset = request.args.get('offset', 0, type=int)
 
-    books = book_dao.get_all_books(sort_by=sort_by, sort_order=sort_order)
+    books = book_dao.get_all_books(sort_by=sort_by, sort_order=sort_order, limit=limit, offset=offset)
+    total_count = book_dao.get_num_total_books()
 
     return jsonify({
+        'total_count': total_count,
         'books': [
             {
                 'id': book.id,
