@@ -80,9 +80,9 @@ class BookDao:
         thread = threading.Thread(target=_async_retry, daemon=True)
         thread.start()
 
-    def get_all_books(self, sort_by: str = "date_added", sort_order: int = -1) -> list[Book]:
-        """Get all books with optional sorting."""
-        cache_key = f"all_books_{sort_by}_{sort_order}"
+    def get_all_books(self, sort_by: str = "date_added", sort_order: int = -1, limit: int | None = None, offset: int = 0) -> list[Book]:
+        """Get books with optional sorting and pagination."""
+        cache_key = f"all_books_{sort_by}_{sort_order}_{limit}_{offset}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
@@ -95,8 +95,14 @@ class BookDao:
             sort_field = "date_published"
         elif sort_by == "page_count":
             sort_field = "page_count"
+        elif sort_by == "purchase_price":
+            sort_field = "purchase_price"
 
         query = self.books_collection.find().sort(sort_field, sort_order)
+        if offset:
+            query = query.skip(offset)
+        if limit:
+            query = query.limit(limit)
         books = [Book.from_mongo(doc) for doc in query]
         self._set_cached(cache_key, books)
         return books
@@ -195,10 +201,17 @@ class BookDao:
             "cover_version": 0,
         }
         result = self.books_collection.insert_one(document)
+        # Invalidate all book list caches (with and without pagination)
         self._retry_cache_delete_async("all_books_title_-1")
+        self._retry_cache_delete_async("all_books_title_1")
         self._retry_cache_delete_async("all_books_date_published_-1")
+        self._retry_cache_delete_async("all_books_date_published_1")
         self._retry_cache_delete_async("all_books_date_added_-1")
+        self._retry_cache_delete_async("all_books_date_added_1")
         self._retry_cache_delete_async("all_books_page_count_-1")
+        self._retry_cache_delete_async("all_books_page_count_1")
+        self._retry_cache_delete_async("all_books_purchase_price_-1")
+        self._retry_cache_delete_async("all_books_purchase_price_1")
         return str(result.inserted_id)
 
     def update_book(
@@ -231,10 +244,17 @@ class BookDao:
                 "notes": notes,
             }
             result = self.books_collection.update_one({"_id": ObjectId(book_id)}, {"$set": document})
+            # Invalidate all book list caches (with and without pagination)
             self._retry_cache_delete_async("all_books_title_-1")
+            self._retry_cache_delete_async("all_books_title_1")
             self._retry_cache_delete_async("all_books_date_published_-1")
+            self._retry_cache_delete_async("all_books_date_published_1")
             self._retry_cache_delete_async("all_books_date_added_-1")
+            self._retry_cache_delete_async("all_books_date_added_1")
             self._retry_cache_delete_async("all_books_page_count_-1")
+            self._retry_cache_delete_async("all_books_page_count_1")
+            self._retry_cache_delete_async("all_books_purchase_price_-1")
+            self._retry_cache_delete_async("all_books_purchase_price_1")
             self._retry_cache_delete_async(f"book_{book_id}")
             return result.modified_count > 0
         except DuplicateBookError:
@@ -255,11 +275,17 @@ class BookDao:
                 {"$set": {"cover_uploaded_at": datetime.now(), "cover_version": new_version}}
             )
             self._retry_cache_delete_async(f"book_{book_id}")
-            # Invalidate book list caches since cover_version changed
+            # Invalidate all book list caches (with and without pagination)
             self._retry_cache_delete_async("all_books_title_-1")
+            self._retry_cache_delete_async("all_books_title_1")
             self._retry_cache_delete_async("all_books_date_published_-1")
+            self._retry_cache_delete_async("all_books_date_published_1")
             self._retry_cache_delete_async("all_books_date_added_-1")
+            self._retry_cache_delete_async("all_books_date_added_1")
             self._retry_cache_delete_async("all_books_page_count_-1")
+            self._retry_cache_delete_async("all_books_page_count_1")
+            self._retry_cache_delete_async("all_books_purchase_price_-1")
+            self._retry_cache_delete_async("all_books_purchase_price_1")
             return result.modified_count > 0
         except Exception:
             return False
@@ -285,10 +311,17 @@ class BookDao:
         """Delete a book from the collection."""
         try:
             result = self.books_collection.delete_one({"_id": ObjectId(book_id)})
+            # Invalidate all book list caches (with and without pagination)
             self._retry_cache_delete_async("all_books_title_-1")
+            self._retry_cache_delete_async("all_books_title_1")
             self._retry_cache_delete_async("all_books_date_published_-1")
+            self._retry_cache_delete_async("all_books_date_published_1")
             self._retry_cache_delete_async("all_books_date_added_-1")
+            self._retry_cache_delete_async("all_books_date_added_1")
             self._retry_cache_delete_async("all_books_page_count_-1")
+            self._retry_cache_delete_async("all_books_page_count_1")
+            self._retry_cache_delete_async("all_books_purchase_price_-1")
+            self._retry_cache_delete_async("all_books_purchase_price_1")
             self._retry_cache_delete_async(f"book_{book_id}")
             return result.deleted_count > 0
         except Exception:
