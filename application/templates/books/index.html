@@ -391,10 +391,10 @@ document.getElementById('sort-select').addEventListener('change', function() {
     localStorage.setItem('booksSort', sortValue);
     
     if (allBooksLoaded) {
-        // If all books are loaded, fetch all with new sort order
-        fetchSortedBooks(sortValue);
+        // If all books are loaded, sort client-side to avoid API request
+        sortBooks(sortValue);
     } else {
-        // If only 20 books are loaded, fetch first 20 with new sort order
+        // If only 20 books are loaded, fetch sorted books from API
         fetchSortedBooks(sortValue);
     }
 });
