@@ -236,33 +236,38 @@ function initializeEditableCells() {
 async function loadAllBooks() {
     const loadAllBtn = document.getElementById('load-all-btn');
     if (!loadAllBtn) return;
-    
+
     loadAllBtn.disabled = true;
     loadAllBtn.textContent = 'Loading...';
-    
+
     const { sortField, sortOrder } = parseSortValue(document.getElementById('sort-select').value);
-    
+
     try {
         const response = await fetch(`/books/all?sort_by=${sortField}&sort_order=${sortOrder}`);
         const data = await response.json();
-        
+
         if (data.books && data.books.length > 0) {
             const tbody = document.getElementById('books-body');
             tbody.innerHTML = '';
-            
+
             data.books.forEach(book => {
                 tbody.insertAdjacentHTML('beforeend', createBookRow(book));
             });
-            
+
             allBooksLoaded = true;
             loadAllBtn.style.display = 'none';
-            
+
+            // Update URL to preserve load all state on refresh
+            const url = new URL(window.location);
+            url.searchParams.set('all', 'true');
+            window.history.replaceState({}, '', url);
+
             // Update total count display
             const totalDisplay = document.querySelector('.mb-3');
             if (totalDisplay) {
                 totalDisplay.textContent = `Total: ${data.books.length} books`;
             }
-            
+
             // Re-initialize editable cells for new rows
             initializeEditableCells();
         }
@@ -326,13 +331,53 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedSort = localStorage.getItem('booksSort');
     const sortValue = savedSort || 'date_added_desc';
     document.getElementById('sort-select').value = sortValue;
-    
-    // Always fetch sorted books from API to ensure correct sorting
-    fetchSortedBooks(sortValue);
-    
+
+    // Check if URL has 'all=true' parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const loadAll = urlParams.get('all') === 'true';
+
+    if (loadAll) {
+        // If URL has all=true, load all books
+        allBooksLoaded = true;
+        const { sortField, sortOrder } = parseSortValue(sortValue);
+        fetch(`/books/all?sort_by=${sortField}&sort_order=${sortOrder}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.books && data.books.length > 0) {
+                    const tbody = document.getElementById('books-body');
+                    tbody.innerHTML = '';
+
+                    data.books.forEach(book => {
+                        tbody.insertAdjacentHTML('beforeend', createBookRow(book));
+                    });
+
+                    const loadAllBtn = document.getElementById('load-all-btn');
+                    if (loadAllBtn) {
+                        loadAllBtn.style.display = 'none';
+                    }
+
+                    // Update total count display
+                    const totalDisplay = document.querySelector('.mb-3');
+                    if (totalDisplay) {
+                        totalDisplay.textContent = `Total: ${data.books.length} books`;
+                    }
+
+                    // Re-initialize editable cells for new rows
+                    initializeEditableCells();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading all books:', error);
+                fetchSortedBooks(sortValue);
+            });
+    } else {
+        // Always fetch sorted books from API to ensure correct sorting
+        fetchSortedBooks(sortValue);
+    }
+
     // Initialize editable cells
     initializeEditableCells();
-    
+
     // Setup load all button
     const loadAllBtn = document.getElementById('load-all-btn');
     if (loadAllBtn) {
