@@ -322,27 +322,27 @@ async function loadAllBooks() {
 
 async function fetchSortedBooks(sortValue) {
     const { sortField, sortOrder } = parseSortValue(sortValue);
-    
+
     try {
         // If all books are loaded, fetch all. Otherwise, fetch only 20
         const limit = allBooksLoaded ? null : 20;
-        const url = limit 
+        const url = limit
             ? `/books/all?sort_by=${sortField}&sort_order=${sortOrder}&limit=${limit}`
             : `/books/all?sort_by=${sortField}&sort_order=${sortOrder}`;
-        
+
         const response = await fetch(url);
         const data = await response.json();
-        
+
         const tbody = document.getElementById('books-body');
         if (!tbody) return;
-        
+
         tbody.innerHTML = '';
-        
+
         if (data.books && data.books.length > 0) {
             data.books.forEach(book => {
                 tbody.insertAdjacentHTML('beforeend', createBookRow(book));
             });
-            
+
             // Update total count display
             const totalDisplay = document.querySelector('.mb-3');
             if (totalDisplay) {
@@ -350,8 +350,18 @@ async function fetchSortedBooks(sortValue) {
                 const showingCount = data.books.length;
                 totalDisplay.textContent = `Total: ${totalCount} books (showing ${showingCount})`;
             }
+
+            // Restore scroll position after books are loaded
+            const savedScrollPosition = sessionStorage.getItem('booksScrollPosition');
+            if (savedScrollPosition) {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        window.scrollTo(0, parseInt(savedScrollPosition));
+                    });
+                });
+            }
         }
-        
+
         // Hide "Loading books..." message
         const noBooksMessage = document.getElementById('no-books-message');
         if (noBooksMessage) {
@@ -399,6 +409,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (totalDisplay) {
                         totalDisplay.textContent = `Total: ${data.books.length} books`;
                     }
+
+                    // Restore scroll position after loading all books
+                    const savedScrollPosition = sessionStorage.getItem('booksScrollPosition');
+                    if (savedScrollPosition) {
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                window.scrollTo(0, parseInt(savedScrollPosition));
+                            });
+                        });
+                    }
                 }
             })
             .catch(error => {
@@ -408,12 +428,6 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         // Always fetch sorted books from API to ensure correct sorting
         fetchSortedBooks(sortValue);
-    }
-
-    // Restore scroll position from sessionStorage
-    const savedScrollPosition = sessionStorage.getItem('booksScrollPosition');
-    if (savedScrollPosition) {
-        window.scrollTo(0, parseInt(savedScrollPosition));
     }
 
     // Setup load all button
