@@ -384,6 +384,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
                         });
                     }
+
+                    // Hide "Loading books..." message
+                    const noBooksMessage = document.getElementById('no-books-message');
+                    if (noBooksMessage) {
+                        noBooksMessage.style.display = 'none';
+                    }
                 }
             })
             .catch(error => {
